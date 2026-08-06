@@ -7,5 +7,6 @@ httpx
 supabase
 neo4j
 groq
+google-genai
 python-jose[cryptography]
 python-multipart

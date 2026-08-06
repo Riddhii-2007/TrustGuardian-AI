@@ -5,6 +5,16 @@ class Settings(BaseSettings):
     SUPABASE_URL: str = "http://localhost:8000"
     SUPABASE_SERVICE_KEY: str = "default_key"
     GROQ_API_KEY: str = ""
+
+    # --- LLM Provider Configuration ---
+    LLM_PROVIDER: str = "gemini"                # "gemini" | "groq" | future: "openai", "ollama"
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.5-flash"      # Configurable — no hardcoded model names
+    GROQ_MODEL: str = "llama-3.1-8b-instant"    # Existing default preserved
+    LLM_TEMPERATURE: float = 0.1
+    LLM_TIMEOUT_SECONDS: int = 30
+    LLM_MAX_RETRIES: int = 3
+
     # Google OAuth
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""

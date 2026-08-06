@@ -1,0 +1,76 @@
+# ==============================
+# Node / Frontend
+# ==============================
+node_modules/
+dist/
+build/
+.vite/
+*.local
+
+# ==============================
+# Python / Backend
+# ==============================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+*.egg
+.eggs/
+
+# ==============================
+# Environment Variables
+# ==============================
+.env
+.env.local
+.env.production
+.env.staging
+!.env.example
+
+# ==============================
+# IDE / Editor
+# ==============================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ==============================
+# Docker
+# ==============================
+docker-compose.override.yml
+
+# ==============================
+# Neo4j
+# ==============================
+neo4j/data/
+neo4j/logs/
+neo4j/plugins/
+
+# ==============================
+# Logs
+# ==============================
+*.log
+logs/
+
+# ==============================
+# Testing
+# ==============================
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/
+
+# ==============================
+# OS
+# ==============================
+.DS_Store
+Thumbs.db
+desktop.ini

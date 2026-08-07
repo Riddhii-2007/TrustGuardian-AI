@@ -19,9 +19,9 @@ const Sidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="w-72 border-r border-slate-800 bg-[#0f1629] p-6 flex flex-col h-full">
+    <aside className="w-72 border-r border-slate-800/40 bg-[#0b1020]/45 backdrop-blur-xl p-6 flex flex-col h-full z-20 relative">
       <div className="flex items-center space-x-3 mb-10 px-2">
-        <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center glow-border">
+        <div className="w-10 h-10 rounded-lg bg-slate-900/60 border border-slate-800 flex items-center justify-center glow-border">
           <span className="text-2xl text-cyan-400">🛡️</span>
         </div>
         <div className="text-xl font-bold gradient-text tracking-wider">
@@ -38,10 +38,10 @@ const Sidebar: React.FC = () => {
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              `flex items-center space-x-4 px-4 py-3.5 rounded-xl transition-all duration-200 ${
+              `flex items-center space-x-4 px-4 py-3.5 rounded-xl transition-all duration-200 relative ${
                 isActive
-                  ? 'bg-slate-800/80 text-cyan-400 border border-slate-700/50 shadow-glow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent'
+                  ? 'bg-slate-800/40 text-cyan-400 border border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.1)] after:absolute after:left-0 after:top-1/4 after:h-1/2 after:w-1 after:bg-cyan-400 after:rounded-full'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/20 hover:border-slate-800/30 border border-transparent hover:translate-x-1'
               }`
             }
           >
@@ -51,7 +51,7 @@ const Sidebar: React.FC = () => {
         ))}
       </nav>
 
-      <div className="mt-6 p-5 rounded-2xl bg-slate-800/30 border border-slate-700/50">
+      <div className="mt-6 p-5 rounded-2xl bg-slate-900/20 border border-slate-800/30">
         <div className="text-xs text-slate-400 mb-2">System Status</div>
         <div className="flex items-center space-x-2">
           <div className="w-2.5 h-2.5 rounded-full bg-green-500 pulse-dot"></div>

@@ -31,7 +31,7 @@ const PsychologyRadar: React.FC<Props> = ({ factors }) => {
               color: '#f8fafc'
             }}
             itemStyle={{ color: '#06b6d4' }}
-            formatter={(value: number) => [`${value.toFixed(0)}%`, 'Score']}
+            formatter={(value: any) => [`${Number(value).toFixed(0)}%`, 'Score']}
           />
           <Radar
             name="Psychology"

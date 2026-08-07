@@ -259,3 +259,104 @@ body {
   outline: 2px solid var(--color-cyber-500);
   outline-offset: 2px;
 }
+
+/* ===================================
+   Cyberpunk / OS-like Visual Design System
+   =================================== */
+
+/* Keyframe Animations */
+@keyframes rotate-cw {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes rotate-ccw {
+  0% { transform: rotate(360deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes scanning-laser {
+  0%, 100% { top: 0%; opacity: 0; }
+  10% { opacity: 0.8; }
+  90% { opacity: 0.8; }
+  100% { top: 100%; opacity: 0; }
+}
+
+@keyframes core-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 30px rgba(6, 182, 212, 0.4), inset 0 0 15px rgba(6, 182, 212, 0.2);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 0 60px rgba(6, 182, 212, 0.7), inset 0 0 30px rgba(6, 182, 212, 0.4);
+  }
+}
+
+@keyframes flow-dash {
+  to {
+    stroke-dashoffset: -40;
+  }
+}
+
+/* Cyber Utilities */
+.cyber-panel {
+  background: rgba(11, 16, 32, 0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.cyber-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.2), transparent);
+  pointer-events: none;
+}
+
+.glow-glow-cyan {
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.25);
+}
+
+.glow-glow-red {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.25);
+}
+
+.glow-glow-green {
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.25);
+}
+
+.animate-rotate-cw {
+  animation: rotate-cw 12s linear infinite;
+}
+
+.animate-rotate-ccw {
+  animation: rotate-ccw 16s linear infinite;
+}
+
+.animate-scanning {
+  animation: scanning-laser 3s ease-in-out infinite;
+}
+
+.animate-core-pulse {
+  animation: core-pulse 4s ease-in-out infinite;
+}
+
+.animate-flow {
+  stroke-dasharray: 8, 4;
+  animation: flow-dash 1s linear infinite;
+}
+
+/* Custom interactive element magnetism follow support */
+.magnetic-btn {
+  transition: transform var(--transition-fast);
+}
+

@@ -2,6 +2,8 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
+import { CyberGridBackground } from '../common/CyberGridBackground';
+import { CustomCursor } from '../common/CustomCursor';
 
 // ===================================
 // TrustGuardian AI — App Layout
@@ -10,15 +12,19 @@ import Navbar from './Navbar';
 
 const AppLayout: React.FC = () => {
   return (
-    <div className="flex h-screen bg-[#0a0e1a] text-slate-100 overflow-hidden">
+    <div className="flex h-screen bg-[#050816] text-slate-100 overflow-hidden relative">
+      {/* Premium Ambient Background and Custom Cursor */}
+      <CyberGridBackground />
+      <CustomCursor />
+
       <Sidebar />
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
         <Navbar />
 
         {/* Page Content */}
-        <div className="flex-1 overflow-auto p-6 bg-grid">
+        <div className="flex-1 overflow-auto p-8">
           <div className="w-full h-full">
             <Outlet />
           </div>

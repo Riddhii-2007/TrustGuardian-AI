@@ -4,6 +4,11 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { requestsApi } from '../api/requests.api';
 import PsychologyRadar from '../components/analyzer/PsychologyRadar';
 import { AlertTriangle, ShieldCheck, ShieldAlert, AlertCircle, Bot, Loader2 } from 'lucide-react';
+import { AIAnalysisPipeline } from '../components/analyzer/AIAnalysisPipeline';
+
+// ===================================
+// TrustGuardian AI — Analyzer Sandbox
+// ===================================
 
 const AnalyzerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -55,24 +60,24 @@ const AnalyzerPage: React.FC = () => {
     <div className="h-full flex flex-col space-y-6 animate-fade-in">
       <header className="flex justify-between items-end">
         <div>
-          <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
+          <h2 className="text-3xl font-extrabold text-slate-100 flex items-center gap-3 tracking-tight">
             <Bot className="text-cyan-400" /> AI Analyzer Sandbox
           </h2>
-          <p className="text-slate-400 mt-1">Submit business requests to the Llama 3 analysis engine.</p>
+          <p className="text-base text-slate-400 mt-2">Submit business requests to the secure Llama 3 analysis engine.</p>
         </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
         
         {/* Left Column: Request Input / View */}
-        <div className="glass-card flex flex-col p-0 overflow-hidden">
-          <div className="border-b border-slate-700/50 bg-slate-800/50 p-4 flex justify-between items-center">
+        <div className="cyber-panel flex flex-col p-0 overflow-hidden">
+          <div className="border-b border-slate-800/40 bg-slate-900/40 p-4 flex justify-between items-center">
             <h3 className="font-semibold text-slate-200">Request Content</h3>
             {isDemo && (
               <button 
                 onClick={handleAnalyze}
                 disabled={isLoading || !demoInput}
-                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium rounded-md transition-colors disabled:opacity-50 flex items-center gap-2"
+                className="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold rounded-lg transition-all duration-200 disabled:opacity-50 flex items-center gap-2 clickable"
               >
                 {isLoading ? <Loader2 size={16} className="animate-spin" /> : 'Run Analysis'}
               </button>
@@ -83,11 +88,11 @@ const AnalyzerPage: React.FC = () => {
               <textarea 
                 value={demoInput}
                 onChange={(e) => setDemoInput(e.target.value)}
-                className="flex-1 w-full bg-slate-900/50 border border-slate-700 rounded-lg p-4 text-slate-200 focus:outline-none focus:border-cyan-500 resize-none font-mono text-sm"
+                className="flex-1 w-full bg-slate-950/20 border border-slate-800 rounded-lg p-4 text-slate-200 focus:outline-none focus:border-cyan-500/50 resize-none font-mono text-sm leading-relaxed"
                 placeholder="Paste an email or request here..."
               />
             ) : (
-              <div className="flex-1 w-full bg-slate-900/50 border border-slate-700 rounded-lg p-4 text-slate-200 font-mono text-sm whitespace-pre-wrap overflow-auto">
+              <div className="flex-1 w-full bg-slate-950/20 border border-slate-800 rounded-lg p-4 text-slate-200 font-mono text-sm whitespace-pre-wrap overflow-auto leading-relaxed">
                 {currentData?.content || "Loading..."}
               </div>
             )}
@@ -95,16 +100,23 @@ const AnalyzerPage: React.FC = () => {
         </div>
 
         {/* Right Column: Analysis Results */}
-        <div className="glass-card flex flex-col overflow-hidden">
-          <div className="border-b border-slate-700/50 bg-slate-800/50 p-4">
+        <div className="cyber-panel flex flex-col overflow-hidden">
+          <div className="border-b border-slate-800/40 bg-slate-900/40 p-4">
             <h3 className="font-semibold text-slate-200">AI Trust Analysis</h3>
           </div>
           
           <div className="flex-1 overflow-auto p-6 space-y-8">
-            {!currentData?.analysis ? (
-              <div className="h-full flex flex-col items-center justify-center text-slate-500">
-                <Bot size={48} className="mb-4 opacity-50" />
-                <p>{isLoading ? "Analyzing manipulation tactics..." : "Run analysis to view results."}</p>
+            {isLoading ? (
+              <div className="h-full flex items-center justify-center">
+                <AIAnalysisPipeline />
+              </div>
+            ) : !currentData?.analysis ? (
+              <div className="h-full flex flex-col items-center justify-center text-slate-500 text-center py-20">
+                <Bot size={54} className="mb-4 text-slate-600/80 animate-pulse" />
+                <p className="text-base font-semibold text-slate-400">Ready for Analysis</p>
+                <p className="text-xs text-slate-500 mt-1.5 max-w-xs">
+                  AI will analyze manipulation vectors, check threat intelligence data, and crawl Neo4j relationship maps.
+                </p>
               </div>
             ) : (
               <>

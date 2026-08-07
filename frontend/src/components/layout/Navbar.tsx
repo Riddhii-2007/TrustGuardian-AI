@@ -11,7 +11,7 @@ const Navbar: React.FC = () => {
   const [showDropdown, setShowDropdown] = useState(false);
 
   return (
-    <header className="h-20 border-b border-slate-800 bg-[#0f1629]/80 flex items-center justify-between px-8 backdrop-blur-md z-20 sticky top-0">
+    <header className="h-20 border-b border-slate-800/40 bg-[#0b1020]/45 flex items-center justify-between px-8 backdrop-blur-xl z-20 sticky top-0">
       
       {/* Left: Global Search (Placeholder) */}
       <div className="flex-1 max-w-md relative hidden md:block">
@@ -20,13 +20,19 @@ const Navbar: React.FC = () => {
         </div>
         <input
           type="text"
-          className="block w-full pl-10 pr-3 py-2 border border-slate-700 rounded-lg leading-5 bg-slate-900/50 text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 sm:text-base transition-colors"
+          className="block w-full pl-10 pr-3 py-2 border border-slate-700/50 rounded-lg leading-5 bg-slate-950/40 text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 sm:text-base transition-colors"
           placeholder="Search entities, domains, or requests..."
         />
       </div>
 
       {/* Right: Actions & Profile */}
-      <div className="flex items-center space-x-4 ml-auto">
+      <div className="flex items-center space-x-6 ml-auto">
+        
+        {/* Live Guard Status Indicator */}
+        <div className="hidden lg:flex items-center space-x-2 bg-cyan-950/20 border border-cyan-800/30 px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wider text-cyan-400">
+          <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 pulse-dot"></span>
+          <span>GUARDIAN AI ACTIVE</span>
+        </div>
         
         {/* Notifications */}
         <button className="p-2 text-slate-400 hover:text-slate-200 transition-colors relative">

@@ -6,6 +6,8 @@ import StatsCard from '../components/dashboard/StatsCard';
 import RecentActivity from '../components/dashboard/RecentActivity';
 import ThreatOverview from '../components/dashboard/ThreatOverview';
 import RiskGauge from '../components/dashboard/RiskGauge';
+import { AICore } from '../components/dashboard/AICore';
+import { TrustScoreGauge } from '../components/dashboard/TrustScoreGauge';
 
 // ===================================
 // TrustGuardian AI — Dashboard Page
@@ -30,7 +32,7 @@ const DashboardPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-slate-700 border-t-cyan-500 rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-slate-800 border-t-cyan-500 rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -47,22 +49,41 @@ const DashboardPage: React.FC = () => {
     );
   }
 
+  // Dynamically extract trust score from cards if possible, otherwise default to 82
+  const trustCard = stats.cards.find(c => c.label.toLowerCase().includes('trust'));
+  const trustScore = trustCard ? parseInt(trustCard.value.split('/')[0]) || 82 : 82;
+  const riskLevel = trustScore > 80 ? 'Low' : trustScore > 50 ? 'Medium' : 'High';
+
   return (
-    <div className="space-y-6 animate-fade-in pb-8">
-      <header className="mb-8 flex justify-between items-end">
+    <div className="space-y-8 animate-fade-in pb-8">
+      <header className="flex justify-between items-end">
         <div>
-          <h2 className="text-2xl font-bold text-slate-100">Enterprise Trust Overview</h2>
-          <p className="text-slate-400 mt-1">Real-time analysis of business requests and trust signals.</p>
+          <h2 className="text-3xl font-extrabold text-slate-100 tracking-tight">Enterprise Trust Overview</h2>
+          <p className="text-base text-slate-400 mt-2">Real-time analysis of business requests and trust signals.</p>
         </div>
         <div className="flex space-x-3">
-          <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 transition-colors text-sm font-medium">
+          <button className="px-5 py-2.5 bg-slate-900/60 hover:bg-slate-800/80 text-slate-200 rounded-xl border border-slate-800 transition-all duration-200 text-sm font-semibold clickable">
             Export Report
           </button>
-          <Link to="/analyzer" className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-colors text-sm font-medium shadow-glow-sm flex items-center justify-center">
+          <Link to="/analyzer" className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl transition-all duration-200 text-sm font-semibold shadow-glow-sm flex items-center justify-center clickable">
             Scan Inbox Now
           </Link>
         </div>
       </header>
+
+      {/* Futuristic Centerpiece Operations Console */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <AICore />
+        </div>
+        <div className="lg:col-span-1">
+          <TrustScoreGauge 
+            score={trustScore} 
+            confidence={94} 
+            riskLevel={riskLevel} 
+          />
+        </div>
+      </div>
 
       {/* Stats Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -72,7 +93,7 @@ const DashboardPage: React.FC = () => {
       </div>
 
       {/* Main Grid: Charts & Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
         {/* Left Column: Charts */}
         <div className="lg:col-span-2 space-y-6 flex flex-col">
           <div className="h-[400px]">

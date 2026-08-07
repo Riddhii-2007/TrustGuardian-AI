@@ -9,12 +9,32 @@ export interface PsychologyFactors {
   intent: number;
 }
 
+export interface QuickResult {
+  trust_score: number;
+  risk_level: string;
+  decision: string;
+  summary: string;
+}
+
+export interface DetailedReport {
+  confidence: number;
+  positive_signals: string[];
+  negative_signals: string[];
+  threats_detected: string[];
+  recommendation: string;
+  reasoning: string;
+  evidence: string[];
+  analysis_timestamp: string;
+}
+
 export interface AnalysisResult {
   risk_score: number;
   risk_level: string;
   psychology: PsychologyFactors;
   flags: string[];
   explanation: string;
+  quick_result?: QuickResult;
+  detailed_report?: DetailedReport;
 }
 
 export interface BusinessRequest {

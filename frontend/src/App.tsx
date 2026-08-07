@@ -6,6 +6,11 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import AnalyzerPage from './pages/AnalyzerPage';
 import GraphPage from './pages/GraphPage';
+import RequestsPage from './pages/RequestsPage';
+import SandboxPage from './pages/SandboxPage';
+import ExplainablePage from './pages/ExplainablePage';
+import ReplayPage from './pages/ReplayPage';
+import SettingsPage from './pages/SettingsPage';
 import { useAuthStore } from './store/authStore';
 
 // ===================================
@@ -46,6 +51,11 @@ const App: React.FC = () => {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="analyzer/:id?" element={<AnalyzerPage />} />
             <Route path="graph" element={<GraphPage />} />
+            <Route path="requests" element={<RequestsPage />} />
+            <Route path="sandbox" element={<SandboxPage />} />
+            <Route path="explainable" element={<ExplainablePage />} />
+            <Route path="replay" element={<ReplayPage />} />
+            <Route path="settings" element={<SettingsPage />} />
             
             {/* Catch-all for other Module placeholders */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

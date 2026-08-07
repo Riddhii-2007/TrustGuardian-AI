@@ -80,6 +80,10 @@ class GroqProvider(BaseLLMProvider):
             LLMProviderError: If the Groq API call fails.
         """
         try:
+            # Groq requires the word "json" in the prompt when using JSON mode
+            if "json" not in system_prompt.lower() and "json" not in user_prompt.lower():
+                system_prompt += "\n\nPlease return the result in JSON format."
+
             client = self._get_client()
             chat_completion = await client.chat.completions.create(
                 messages=[

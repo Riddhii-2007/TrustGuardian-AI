@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../api/supabase';
+import { CyberGridBackground } from '../components/common/CyberGridBackground';
 
 // ===================================
 // TrustGuardian AI — Login Page
@@ -32,18 +33,36 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0a0e1a] bg-grid relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-[#050816] relative overflow-hidden">
+      {/* Active interactive cyber canvas grid background */}
+      <CyberGridBackground />
       
-      {/* Background Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+      {/* Ambient background glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-500/5 rounded-full blur-[120px] pointer-events-none z-0"></div>
 
-      <div className="glass-card w-full max-w-md p-8 relative z-10">
+      <div className="glass-card w-full max-w-md p-8 relative z-10 shadow-[0_0_50px_rgba(6,182,212,0.15)] border border-slate-800/80">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center mx-auto mb-6 glow-border">
-            <span className="text-3xl text-cyan-400">🛡️</span>
+          {/* Futuristic animated HUD shield logo core */}
+          <div className="w-24 h-24 relative mx-auto mb-6 flex items-center justify-center">
+            {/* Outer dotted scanning ring */}
+            <div className="absolute inset-0 border border-dashed border-cyan-500/40 rounded-full animate-[spin_15s_linear_infinite]"></div>
+            {/* Inner counter-rotating ring */}
+            <div className="absolute inset-2 border border-dotted border-blue-400/30 rounded-full animate-[spin_8s_linear_infinite_reverse]"></div>
+            {/* Core glow background */}
+            <div className="absolute inset-4 bg-cyan-500/10 rounded-full blur-[6px] animate-pulse"></div>
+            {/* Inner active logo core */}
+            <svg 
+              className="w-10 h-10 text-cyan-400 relative z-10 animate-[bounce_3s_ease-in-out_infinite]" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="1.5"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 3.036v13.5" />
+            </svg>
           </div>
-          <h1 className="text-3xl font-bold gradient-text mb-2">TrustGuardian AI</h1>
-          <p className="text-slate-400 text-sm">Enterprise Trust Intelligence Platform</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-100 gradient-text mb-2">TrustGuardian AI</h1>
+          <p className="text-slate-400 text-sm font-semibold tracking-wide">Enterprise Trust Intelligence Platform</p>
         </div>
 
         <div className="space-y-4">

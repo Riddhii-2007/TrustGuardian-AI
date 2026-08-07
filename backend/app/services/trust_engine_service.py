@@ -59,15 +59,30 @@ class TrustEngineService:
         historical_risk, hist_traces = self._compute_historical_risk(graph_intel)
         reasoning.extend(hist_traces)
         
-        content_risk, cont_traces = self._compute_content_risk(llm_analysis, identity_risk, historical_risk)
+        content_risk, cont_traces = self._compute_content_risk(llm_analysis)
         reasoning.extend(cont_traces)
 
         # --- Stage 3: Fusion ---
-        raw_risk = (
-            config.WEIGHT_CONTENT * content_risk
-            + config.WEIGHT_IDENTITY * identity_risk
-            + config.WEIGHT_HISTORICAL * historical_risk
-        )
+        active_weights = 0.0
+        weighted_sum = 0.0
+
+        if content_risk is not None:
+            active_weights += config.WEIGHT_CONTENT
+            weighted_sum += config.WEIGHT_CONTENT * content_risk
+            
+        if identity_risk is not None:
+            active_weights += config.WEIGHT_IDENTITY
+            weighted_sum += config.WEIGHT_IDENTITY * identity_risk
+            
+        if historical_risk is not None:
+            active_weights += config.WEIGHT_HISTORICAL
+            weighted_sum += config.WEIGHT_HISTORICAL * historical_risk
+            
+        if active_weights > 0:
+            raw_risk = weighted_sum / active_weights
+        else:
+            raw_risk = 0.0
+            
         risk_score = _clamp(raw_risk)
         trust_score = 100.0 - risk_score
         confidence_score = _clamp(confidence_score)
@@ -84,6 +99,14 @@ class TrustEngineService:
         
         recommendation = config.determine_recommendation(trust_score)
         
+        component_scores = {}
+        if content_risk is not None:
+            component_scores["content"] = round(content_risk, 2)
+        if identity_risk is not None:
+            component_scores["identity"] = round(identity_risk, 2)
+        if historical_risk is not None:
+            component_scores["historical"] = round(historical_risk, 2)
+
         return TrustEngineResult(
             trust_score=round(trust_score, 2),
             risk_level=risk_level,
@@ -91,11 +114,7 @@ class TrustEngineService:
             recommendation=recommendation,
             reasoning=reasoning,
             evidence_used=evidence_used,
-            component_scores={
-                "content": round(content_risk, 2),
-                "identity": round(identity_risk, 2),
-                "historical": round(historical_risk, 2)
-            }
+            component_scores=component_scores
         )
 
     # ------------------------------------------------------------------
@@ -140,10 +159,16 @@ class TrustEngineService:
         return conf, traces
 
     @staticmethod
-    def _compute_identity_risk(ti: ThreatIntelResult | None) -> Tuple[float, List[DecisionTrace]]:
+    def _compute_identity_risk(ti: ThreatIntelResult | None) -> Tuple[float | None, List[DecisionTrace]]:
         traces = []
+        if not ti: return None, traces
+        
+        has_auth = any(status != "NONE" for status in [ti.spf, ti.dkim, ti.dmarc])
+        has_urls = ti.urls_checked > 0
+        if not has_auth and not has_urls:
+            return None, traces
+            
         risk = 0.0
-        if not ti: return risk, traces
         
         if ti.virustotal and ti.virustotal.malicious > 0:
             risk += config.RULE_VT_MALICIOUS_PENALTY
@@ -163,10 +188,11 @@ class TrustEngineService:
         return risk, traces
 
     @staticmethod
-    def _compute_historical_risk(graph: GraphAnalysisResult | None) -> Tuple[float, List[DecisionTrace]]:
+    def _compute_historical_risk(graph: GraphAnalysisResult | None) -> Tuple[float | None, List[DecisionTrace]]:
         traces = []
+        if not graph or graph.interaction_count <= 0: return None, traces
+        
         risk = 0.0
-        if not graph or graph.interaction_count <= 0: return risk, traces
         
         if graph.trust_drop:
             risk += config.RULE_TRUST_DROP_PENALTY
@@ -203,9 +229,9 @@ class TrustEngineService:
         return risk, traces
 
     @staticmethod
-    def _compute_content_risk(llm: LLMAnalysisResult, id_risk: float, hist_risk: float) -> Tuple[float, List[DecisionTrace]]:
+    def _compute_content_risk(llm: LLMAnalysisResult) -> Tuple[float | None, List[DecisionTrace]]:
         traces = []
-        if not llm: return 0.0, traces
+        if not llm: return None, traces
 
         risk = _clamp(llm.risk_score)
         
@@ -213,14 +239,6 @@ class TrustEngineService:
             rule_name="LLM_Content_Risk", evidence_source="llm.risk_score", weight_applied=risk,
             explanation=f"LLM base risk score: {risk:.2f}"
         ))
-        
-        both_low = (id_risk < config.LOW_RISK_THRESHOLD and hist_risk < config.LOW_RISK_THRESHOLD)
-        if both_low:
-            risk *= config.CONTENT_RISK_HALVING_FACTOR
-            traces.append(DecisionTrace(
-                rule_name="Content_Risk_Halving", evidence_source="trust_engine", weight_applied=0.0,
-                explanation="Identity and historical risks are low. Halving content risk."
-            ))
             
         return risk, traces
 

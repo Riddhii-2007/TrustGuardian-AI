@@ -23,9 +23,9 @@ class Settings(BaseSettings):
     VIRUSTOTAL_API_KEY: str = ""
     
     # Neo4j
-    NEO4J_URI: str = ""
-    NEO4J_USER: str = ""
-    NEO4J_PASSWORD: str = ""
+    NEO4J_URI: str = "bolt://localhost:7687"
+    NEO4J_USER: str = "neo4j"
+    NEO4J_PASSWORD: str = "password"
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
 
     class Config:

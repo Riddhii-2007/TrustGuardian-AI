@@ -6,6 +6,8 @@ from app.models.auth import TokenPayload
 from app.models.request import BusinessRequest
 from app.models.common import APIResponse, PaginatedResponse
 from app.services.analyzer_service import analyzer_service
+from app.services.email_service import email_service
+from app.models.scan import ScanRequest, ScanType
 from datetime import datetime
 
 router = APIRouter()
@@ -73,3 +75,50 @@ async def get_request(id: str, token: TokenPayload = Depends(verify_token)):
         analysis=analysis
     )
     return APIResponse(success=True, data=request)
+
+
+class FetchGmailPayload(BaseModel):
+    access_token: str
+    max_results: Optional[int] = 5
+
+
+@router.post("/fetch-gmail", response_model=APIResponse[List[BusinessRequest]])
+async def fetch_gmail_requests(
+    payload: FetchGmailPayload,
+    token: TokenPayload = Depends(verify_token)
+):
+    # 1. Fetch raw parsed emails from Gmail API using the access token
+    raw_emails = await email_service.fetch_latest_emails(
+        access_token=payload.access_token,
+        max_results=payload.max_results
+    )
+    
+    # 2. Loop through each email, run trust analysis, and package into BusinessRequest
+    business_requests = []
+    for raw in raw_emails:
+        # Create a ScanRequest
+        scan_req = ScanRequest(
+            content=raw["content"],
+            scan_type=ScanType.EMAIL,
+            metadata={
+                "subject": raw["subject"],
+                "sender": raw["sender"],
+                "headers": raw["headers"]
+            }
+        )
+        
+        # Run orchestrator pipeline
+        analysis = await analyzer_service.scan(scan_req)
+        
+        request = BusinessRequest(
+            id=raw["id"],
+            title=raw["subject"],
+            content=raw["content"],
+            requester=raw["sender"],
+            created_at=datetime.now(),
+            status="Analyzed",
+            analysis=analysis
+        )
+        business_requests.append(request)
+        
+    return APIResponse(success=True, data=business_requests)

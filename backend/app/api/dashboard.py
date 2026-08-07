@@ -50,8 +50,12 @@ async def get_dashboard_stats(
     
     analyzed_results = []
     if emails:
-        tasks = [analyzer_service.analyze_request(e["content"]) for e in emails]
-        analyzed_results = await asyncio.gather(*tasks, return_exceptions=True)
+        for e in emails:
+            try:
+                res = await analyzer_service.analyze_request(e["content"])
+                analyzed_results.append(res)
+            except Exception as e:
+                analyzed_results.append(e)
     
     total_analyzed = max(2845, len(emails))
     high_risk_count = 0
@@ -110,8 +114,14 @@ async def get_recent_activity(
         emails = await gmail_service.fetch_recent_emails(google_token, limit=5)
         
         if emails:
-            tasks = [analyzer_service.analyze_request(e["content"]) for e in emails]
-            analyzed_results = await asyncio.gather(*tasks, return_exceptions=True)
+            analyzed_results = []
+            # Analyze sequentially to prevent hitting Groq rate limits
+            for e in emails:
+                try:
+                    res = await analyzer_service.analyze_request(e["content"])
+                    analyzed_results.append(res)
+                except Exception as e:
+                    analyzed_results.append(e)
             
             for i, email in enumerate(emails):
                 res = analyzed_results[i]

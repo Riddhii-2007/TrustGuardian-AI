@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '../api/dashboard.api';
@@ -8,12 +8,30 @@ import ThreatOverview from '../components/dashboard/ThreatOverview';
 import RiskGauge from '../components/dashboard/RiskGauge';
 import { AICore } from '../components/dashboard/AICore';
 import { TrustScoreGauge } from '../components/dashboard/TrustScoreGauge';
+import { supabase } from '../api/supabase';
 
 // ===================================
 // TrustGuardian AI — Dashboard Page
 // ===================================
 
 const DashboardPage: React.FC = () => {
+  const [hasGmailToken] = useState<boolean>(!!localStorage.getItem('google-provider-token'));
+
+  const handleGmailConnect = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          scopes: 'https://www.googleapis.com/auth/gmail.readonly profile email',
+          redirectTo: `${window.location.origin}/dashboard`
+        }
+      });
+      if (error) throw error;
+    } catch (err) {
+      console.error('Failed to connect Gmail:', err);
+    }
+  };
+
   // Fetch stats data
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
     queryKey: ['dashboardStats'],
@@ -62,6 +80,20 @@ const DashboardPage: React.FC = () => {
           <p className="text-base text-slate-400 mt-2">Real-time analysis of business requests and trust signals.</p>
         </div>
         <div className="flex space-x-3">
+          {hasGmailToken ? (
+            <button className="px-5 py-2.5 bg-green-500/10 border border-green-500/30 text-green-400 rounded-xl transition-all duration-200 text-sm font-semibold flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-green-500 pulse-dot"></span>
+              Gmail Active
+            </button>
+          ) : (
+            <button 
+              onClick={handleGmailConnect}
+              className="px-5 py-2.5 bg-orange-500/10 border border-orange-500/30 text-orange-400 hover:bg-orange-500/20 rounded-xl transition-all duration-200 text-sm font-semibold flex items-center gap-2 clickable shadow-[0_0_15px_rgba(249,115,22,0.15)] animate-pulse"
+            >
+              <span className="w-2.5 h-2.5 rounded-full bg-orange-500 pulse-dot"></span>
+              Link Gmail
+            </button>
+          )}
           <button className="px-5 py-2.5 bg-slate-900/60 hover:bg-slate-800/80 text-slate-200 rounded-xl border border-slate-800 transition-all duration-200 text-sm font-semibold clickable">
             Export Report
           </button>

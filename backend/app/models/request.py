@@ -15,6 +15,10 @@ class AnalysisResult(BaseModel):
     psychology: PsychologyFactors
     flags: List[str]
     explanation: str
+    trust_score: float = Field(default=50.0, ge=0, le=100)
+    confidence_score: float = Field(default=0.0, ge=0, le=100)
+    verification_required: bool = False
+    recommendation: str = "Pending analysis"
 
 class BusinessRequest(BaseModel):
     id: str

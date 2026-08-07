@@ -20,3 +20,9 @@ class WorkflowComparison(BaseModel):
     expected_workflow: List[WorkflowStep]
     actual_workflow: List[WorkflowStep]
     deviations: List[DeviationAlert]
+
+class CompareWorkflowRequest(BaseModel):
+    request_id: str
+    verification_required: bool
+    recommendation: str
+    actual_steps: List[WorkflowStep]

@@ -142,3 +142,7 @@ class ScanResult(BaseModel):
     explanation: str
     evidence: ScanEvidence
     latency_ms: int = 0
+    trust_score: float = 50.0
+    confidence_score: float = 0.0
+    verification_required: bool = False
+    recommendation: str = "Pending analysis"

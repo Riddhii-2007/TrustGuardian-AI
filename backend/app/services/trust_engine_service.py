@@ -1,441 +1,228 @@
 """
 Trust Engine Service for TrustGuardianAI.
 
-Pure, offline, deterministic scoring engine that consumes evidence
-dictionaries and produces final risk, trust, confidence, verification,
+Pure, offline, deterministic scoring engine that consumes typed evidence
+models and produces final risk, trust, confidence, verification,
 and recommendation decisions.
 
 Makes NO network, database, LLM, or framework calls.
-
-Scoring architecture:
-    Confidence  = LLM confidence + Threat-intel confidence + Graph confidence
-    Content     = LLM risk_score (optionally halved when identity+history both low)
-    Identity    = VirusTotal + email-auth + domain-age signals
-    Historical  = trust-pattern changes + inactivity decay
-    Fusion      = 0.40*content + 0.35*identity + 0.25*historical
-
-Recommendation matrix:
-    High trust + High confidence  → Proceed
-    High trust + Low confidence   → Unverified
-    Low trust  + High confidence  → Block
-    Low trust  + Low confidence   → Block + escalate to SOC
-
-Payment-change circuit breaker:
-    Detects bank-account / routing / beneficiary / wire keywords in extraction.
-    Overrides recommendation to MANDATORY VERIFICATION.
 """
 
 from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass
-from typing import Any
+from typing import List, Tuple
+
+from app.services import scoring_config as config
+from app.models.trust_engine import (
+    TrustEngineResult,
+    LLMAnalysisResult,
+    GraphAnalysisResult,
+    DecisionTrace,
+)
+from app.models.threat_intel import ThreatIntelResult
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
-# Confidence weights
-_LLM_CONFIDENCE_MAX = 40.0
-_THREAT_INTEL_CONFIDENCE_MAX = 30.0
-_GRAPH_CONFIDENCE_MAX = 30.0
-_GRAPH_CONFIDENCE_PER_INTERACTION = 3.0
-
-# Threat-intel: maximum number of independent checks
-_THREAT_INTEL_TOTAL_CHECKS = 2  # VirusTotal + email auth
-
-# Fusion weights
-_CONTENT_WEIGHT = 0.40
-_IDENTITY_WEIGHT = 0.35
-_HISTORICAL_WEIGHT = 0.25
-
-# Thresholds
-_HIGH_TRUST_THRESHOLD = 70.0
-_HIGH_CONFIDENCE_THRESHOLD = 70.0
-
-# Identity-risk contributions
-_VT_MALICIOUS_PENALTY = 40.0
-_EMAIL_AUTH_FAIL_PENALTY = 15.0
-_DOMAIN_AGE_YOUNG_PENALTY = 10.0   # < 30 days
-_DOMAIN_AGE_NEW_PENALTY = 5.0      # 30–180 days
-
-# Historical-risk contributions
-_TRUST_DROP_PENALTY = 30.0
-_GOOD_HISTORY_BONUS = -10.0
-
-# Inactivity decay
-_INACTIVITY_FULL_CUTOFF_DAYS = 365
-_INACTIVITY_DECAY_START_DAYS = 90
-
-# Content-risk halving threshold
-_LOW_RISK_THRESHOLD = 20.0
-
-# Payment circuit-breaker phrases (matched against ExtractionService keys)
-_PAYMENT_CIRCUIT_BREAKER_PHRASES: list[re.Pattern[str]] = [
-    re.compile(r"\bbank[- ]?account\b", re.IGNORECASE),
-    re.compile(r"\brouting[- ]?number\b", re.IGNORECASE),
-    re.compile(r"\bbeneficiary\b", re.IGNORECASE),
-    re.compile(r"\bnew[- ]?payment\b", re.IGNORECASE),
-    re.compile(r"\bwire[- ]?transfer\b", re.IGNORECASE),
-    re.compile(r"\bwire\b", re.IGNORECASE),
-    re.compile(r"\baccount[- ]?number\b", re.IGNORECASE),
-    re.compile(r"\bdirect[- ]?deposit\b", re.IGNORECASE),
-    re.compile(r"\bswift[- ]?code\b", re.IGNORECASE),
-    re.compile(r"\biban\b", re.IGNORECASE),
-]
-
-
-@dataclass
-class TrustEngineResult:
-    """Output of the TrustEngineService.
-
-    All scores are on a 0–100 scale.
-    risk_score + trust_score = 100 (always).
-    confidence_score is independent of risk/trust.
-    """
-
-    risk_score: float
-    trust_score: float
-    confidence_score: float
-    risk_level: str
-    verification_required: bool
-    recommendation: str
-
-
 def _clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
-    """Clamp a value to [low, high]."""
     return max(low, min(high, value))
 
-
 class TrustEngineService:
-    """Pure, offline trust/risk/confidence scoring engine.
-
-    Consumes evidence dictionaries produced by upstream services:
-        - llm_analysis (from LLMService)
-        - extraction (from ExtractionService)
-        - threat_intel (from ThreatIntelService — future)
-        - graph_intel (from GraphService — future)
-
-    Thread-safe and stateless — safe to use as a singleton.
-    """
+    """Pure, offline trust/risk/confidence scoring engine."""
 
     def evaluate(
         self,
-        llm_analysis: dict[str, Any],
-        extraction: dict[str, Any],
-        threat_intel: dict[str, Any] | None = None,
-        graph_intel: dict[str, Any] | None = None,
+        llm_analysis: LLMAnalysisResult,
+        threat_intel: ThreatIntelResult | None = None,
+        graph_intel: GraphAnalysisResult | None = None,
     ) -> TrustEngineResult:
-        """Evaluate evidence and produce final scores + recommendation.
+        
+        reasoning: List[DecisionTrace] = []
+        evidence_used: List[str] = []
 
-        Args:
-            llm_analysis: Parsed LLM response dict (may be empty on failure).
-            extraction: ExtractionService output dict.
-            threat_intel: ThreatIntelService output dict (may be None/empty).
-            graph_intel: GraphService output dict (may be None/empty).
-
-        Returns:
-            TrustEngineResult with all final scoring fields.
-        """
-        threat_intel = threat_intel or {}
-        graph_intel = graph_intel or {}
-
+        if llm_analysis and llm_analysis.risk_score > 0:
+            evidence_used.append("llm_analysis")
+        if threat_intel and threat_intel.urls_checked is not None:
+            evidence_used.append("threat_intel")
+        if graph_intel and graph_intel.interaction_count > 0:
+            evidence_used.append("graph_intel")
+            
         # --- Stage 1: Confidence ---
-        confidence_score = self._compute_confidence(
-            llm_analysis, threat_intel, graph_intel,
-        )
-
+        confidence_score, conf_traces = self._compute_confidence(llm_analysis, threat_intel, graph_intel)
+        reasoning.extend(conf_traces)
+        
         # --- Stage 2: Component risks ---
-        identity_risk = self._compute_identity_risk(threat_intel)
-        historical_risk = self._compute_historical_risk(graph_intel)
-        content_risk = self._compute_content_risk(
-            llm_analysis, identity_risk, historical_risk,
-        )
+        identity_risk, id_traces = self._compute_identity_risk(threat_intel)
+        reasoning.extend(id_traces)
+        
+        historical_risk, hist_traces = self._compute_historical_risk(graph_intel)
+        reasoning.extend(hist_traces)
+        
+        content_risk, cont_traces = self._compute_content_risk(llm_analysis, identity_risk, historical_risk)
+        reasoning.extend(cont_traces)
 
         # --- Stage 3: Fusion ---
         raw_risk = (
-            _CONTENT_WEIGHT * content_risk
-            + _IDENTITY_WEIGHT * identity_risk
-            + _HISTORICAL_WEIGHT * historical_risk
+            config.WEIGHT_CONTENT * content_risk
+            + config.WEIGHT_IDENTITY * identity_risk
+            + config.WEIGHT_HISTORICAL * historical_risk
         )
         risk_score = _clamp(raw_risk)
         trust_score = 100.0 - risk_score
         confidence_score = _clamp(confidence_score)
+        
+        reasoning.append(DecisionTrace(
+            rule_name="Fusion",
+            evidence_source="TrustEngine",
+            weight_applied=0.0,
+            explanation=f"Calculated Trust Score {trust_score:.2f} (Confidence: {confidence_score:.2f})"
+        ))
 
-        # --- Stage 4: Risk level ---
-        risk_level = self._compute_risk_level(risk_score)
-
-        # --- Stage 5: Recommendation ---
-        high_trust = trust_score >= _HIGH_TRUST_THRESHOLD
-        high_confidence = confidence_score >= _HIGH_CONFIDENCE_THRESHOLD
-
-        if high_trust and high_confidence:
-            recommendation = "Proceed"
-            verification_required = False
-        elif high_trust and not high_confidence:
-            recommendation = (
-                "Unverified — clean signals; confirm via secondary channel"
-            )
-            verification_required = False
-        elif not high_trust and high_confidence:
-            recommendation = "Block"
-            verification_required = False
-        else:
-            recommendation = "Block + escalate to SOC"
-            verification_required = False
-
-        # --- Stage 6: Payment circuit breaker ---
-        if self._check_payment_circuit_breaker(extraction):
-            verification_required = True
-            recommendation = (
-                "MANDATORY VERIFICATION — confirm via secondary channel"
-            )
-
-        logger.info(
-            "TrustEngine | risk=%.1f trust=%.1f confidence=%.1f "
-            "level=%s verify=%s rec='%s'",
-            risk_score, trust_score, confidence_score,
-            risk_level, verification_required, recommendation,
-        )
-
+        # --- Stage 4: Decisions ---
+        risk_level = config.determine_risk_level(trust_score)
+        
+        recommendation = config.determine_recommendation(trust_score)
+        
         return TrustEngineResult(
-            risk_score=round(risk_score, 2),
             trust_score=round(trust_score, 2),
-            confidence_score=round(confidence_score, 2),
             risk_level=risk_level,
-            verification_required=verification_required,
+            confidence_score=round(confidence_score, 2),
             recommendation=recommendation,
+            reasoning=reasoning,
+            evidence_used=evidence_used,
+            component_scores={
+                "content": round(content_risk, 2),
+                "identity": round(identity_risk, 2),
+                "historical": round(historical_risk, 2)
+            }
         )
 
     # ------------------------------------------------------------------
-    # Confidence
+    # Evaluators
     # ------------------------------------------------------------------
-
     @staticmethod
     def _compute_confidence(
-        llm_analysis: dict[str, Any],
-        threat_intel: dict[str, Any],
-        graph_intel: dict[str, Any],
-    ) -> float:
-        """Compute overall evidence-completeness confidence.
-
-        Independent of risk/trust — reflects how much evidence we have.
-
-        LLM confidence: 40 only when valid, non-empty LLM analysis exists.
-        Threat-intel:   30 * successful_checks / 2.
-        Graph:          min(30, interaction_count * 3).
-        """
-        # LLM confidence
-        llm_conf = 0.0
-        if llm_analysis and isinstance(llm_analysis, dict):
-            # Must have at least a risk_score to be considered valid
-            if "risk_score" in llm_analysis:
-                llm_conf = _LLM_CONFIDENCE_MAX
-
-        # Threat-intel confidence
-        ti_conf = 0.0
-        if threat_intel:
+        llm: LLMAnalysisResult, ti: ThreatIntelResult | None, graph: GraphAnalysisResult | None
+    ) -> Tuple[float, List[DecisionTrace]]:
+        traces = []
+        conf = 0.0
+        
+        if llm and llm.risk_score > 0:
+            conf += config.CONF_LLM_MAX
+            traces.append(DecisionTrace(
+                rule_name="LLM_Confidence", evidence_source="llm", weight_applied=config.CONF_LLM_MAX,
+                explanation="Valid LLM analysis present."
+            ))
+            
+        if ti:
             successful = 0
-            # VirusTotal check
-            vt = threat_intel.get("virustotal")
-            if isinstance(vt, dict) and vt.get("status") == "completed":
+            if ti.virustotal:
                 successful += 1
-            # Email auth check (SPF/DKIM/DMARC)
-            auth = threat_intel.get("email_auth")
-            if isinstance(auth, dict) and auth.get("status") == "completed":
+            if ti.spf != "NONE" or ti.dkim != "NONE" or ti.dmarc != "NONE":
                 successful += 1
-            ti_conf = _THREAT_INTEL_CONFIDENCE_MAX * successful / _THREAT_INTEL_TOTAL_CHECKS
-
-        # Graph confidence
-        graph_conf = 0.0
-        if graph_intel:
-            interaction_count = graph_intel.get("interaction_count", 0)
-            if isinstance(interaction_count, (int, float)) and interaction_count > 0:
-                graph_conf = min(
-                    _GRAPH_CONFIDENCE_MAX,
-                    interaction_count * _GRAPH_CONFIDENCE_PER_INTERACTION,
-                )
-
-        return llm_conf + ti_conf + graph_conf
-
-    # ------------------------------------------------------------------
-    # Identity Risk
-    # ------------------------------------------------------------------
+            if successful > 0:
+                ti_conf = config.CONF_THREAT_INTEL_MAX * successful / config.CONF_THREAT_INTEL_TOTAL_CHECKS
+                conf += ti_conf
+                traces.append(DecisionTrace(
+                    rule_name="TI_Confidence", evidence_source="threat_intel", weight_applied=ti_conf,
+                    explanation=f"{successful} threat intel checks completed."
+                ))
+            
+        if graph and graph.interaction_count > 0:
+            graph_conf = min(config.CONF_GRAPH_MAX, graph.interaction_count * config.CONF_GRAPH_PER_INTERACTION)
+            conf += graph_conf
+            traces.append(DecisionTrace(
+                rule_name="Graph_Confidence", evidence_source="graph", weight_applied=graph_conf,
+                explanation=f"Based on {graph.interaction_count} prior interactions."
+            ))
+            
+        return conf, traces
 
     @staticmethod
-    def _compute_identity_risk(threat_intel: dict[str, Any]) -> float:
-        """Compute identity-based risk from threat intelligence.
-
-        VirusTotal malicious hit: +40
-        SPF/DKIM/DMARC failure:  +15
-        Domain age < 30 days:    +10
-        Domain age 30–180 days:  +5
-        Missing checks:          +0
-        """
+    def _compute_identity_risk(ti: ThreatIntelResult | None) -> Tuple[float, List[DecisionTrace]]:
+        traces = []
         risk = 0.0
-        if not threat_intel:
-            return risk
-
-        # VirusTotal
-        vt = threat_intel.get("virustotal")
-        if isinstance(vt, dict):
-            if vt.get("malicious", False):
-                risk += _VT_MALICIOUS_PENALTY
-
-        # Email authentication (SPF/DKIM/DMARC)
-        auth = threat_intel.get("email_auth")
-        if isinstance(auth, dict):
-            if auth.get("pass") is False:
-                risk += _EMAIL_AUTH_FAIL_PENALTY
-
-        # Domain age
-        domain_age_days = threat_intel.get("domain_age_days")
-        if isinstance(domain_age_days, (int, float)):
-            if domain_age_days < 30:
-                risk += _DOMAIN_AGE_YOUNG_PENALTY
-            elif domain_age_days < 180:
-                risk += _DOMAIN_AGE_NEW_PENALTY
-
-        return risk
-
-    # ------------------------------------------------------------------
-    # Historical Risk
-    # ------------------------------------------------------------------
+        if not ti: return risk, traces
+        
+        if ti.virustotal and ti.virustotal.malicious > 0:
+            risk += config.RULE_VT_MALICIOUS_PENALTY
+            traces.append(DecisionTrace(
+                rule_name="VT_Malicious", evidence_source="threat_intel.virustotal", 
+                weight_applied=config.RULE_VT_MALICIOUS_PENALTY, explanation="VirusTotal flagged URL/Domain as malicious."
+            ))
+            
+        auth_failed = any(status == "FAIL" for status in [ti.spf, ti.dkim, ti.dmarc])
+        if auth_failed:
+            risk += config.RULE_EMAIL_AUTH_FAIL_PENALTY
+            traces.append(DecisionTrace(
+                rule_name="Email_Auth_Fail", evidence_source="threat_intel.email_auth", 
+                weight_applied=config.RULE_EMAIL_AUTH_FAIL_PENALTY, explanation="Email authentication (SPF/DKIM/DMARC) failed."
+            ))
+        
+        return risk, traces
 
     @staticmethod
-    def _compute_historical_risk(graph_intel: dict[str, Any]) -> float:
-        """Compute historical risk from graph intelligence.
-
-        No prior interactions:     0 (neutral)
-        Sharp trust-pattern drop: +30
-        Consistent good history:  -10
-        After 365 days inactive:   0
-        90–365 days inactive:      linear decay to 50%
-        """
-        if not graph_intel:
-            return 0.0
-
-        interaction_count = graph_intel.get("interaction_count", 0)
-        if not isinstance(interaction_count, (int, float)) or interaction_count <= 0:
-            return 0.0
-
+    def _compute_historical_risk(graph: GraphAnalysisResult | None) -> Tuple[float, List[DecisionTrace]]:
+        traces = []
         risk = 0.0
-
-        # Trust-pattern drop detection
-        if graph_intel.get("trust_drop", False):
-            risk += _TRUST_DROP_PENALTY
-
-        # Consistent good history bonus
-        if graph_intel.get("consistent_good", False):
-            risk += _GOOD_HISTORY_BONUS
-
-        # Inactivity decay
-        days_since_last = graph_intel.get("days_since_last_interaction")
-        if isinstance(days_since_last, (int, float)) and days_since_last > 0:
-            if days_since_last >= _INACTIVITY_FULL_CUTOFF_DAYS:
-                # Full cutoff — no historical influence
+        if not graph or graph.interaction_count <= 0: return risk, traces
+        
+        if graph.trust_drop:
+            risk += config.RULE_TRUST_DROP_PENALTY
+            traces.append(DecisionTrace(
+                rule_name="Trust_Drop", evidence_source="graph.trust_drop", 
+                weight_applied=config.RULE_TRUST_DROP_PENALTY, explanation="Sharp drop in trust pattern detected."
+            ))
+            
+        if graph.consistent_good:
+            risk += config.RULE_GOOD_HISTORY_BONUS
+            traces.append(DecisionTrace(
+                rule_name="Good_History", evidence_source="graph.consistent_good", 
+                weight_applied=config.RULE_GOOD_HISTORY_BONUS, explanation="Consistent history of safe interactions."
+            ))
+            
+        if graph.days_since_last_interaction is not None and graph.days_since_last_interaction > 0:
+            days = graph.days_since_last_interaction
+            if days >= config.INACTIVITY_FULL_CUTOFF_DAYS:
                 risk = 0.0
-            elif days_since_last >= _INACTIVITY_DECAY_START_DAYS:
-                # Linear decay from 100% at 90d to 50% at 365d
-                decay_range = _INACTIVITY_FULL_CUTOFF_DAYS - _INACTIVITY_DECAY_START_DAYS
-                days_into_decay = days_since_last - _INACTIVITY_DECAY_START_DAYS
-                decay_factor = 1.0 - 0.5 * (days_into_decay / decay_range)
-                risk *= decay_factor
-
-        return risk
-
-    # ------------------------------------------------------------------
-    # Content Risk
-    # ------------------------------------------------------------------
+                traces.append(DecisionTrace(
+                    rule_name="Inactivity_Cutoff", evidence_source="graph.days", weight_applied=0.0,
+                    explanation="Over 365 days inactive. Historical risk reset."
+                ))
+            elif days >= config.INACTIVITY_DECAY_START_DAYS:
+                decay_range = config.INACTIVITY_FULL_CUTOFF_DAYS - config.INACTIVITY_DECAY_START_DAYS
+                days_into = days - config.INACTIVITY_DECAY_START_DAYS
+                factor = 1.0 - 0.5 * (days_into / decay_range)
+                risk *= factor
+                traces.append(DecisionTrace(
+                    rule_name="Inactivity_Decay", evidence_source="graph.days", weight_applied=0.0,
+                    explanation=f"Inactivity decay factor {factor:.2f} applied to historical risk."
+                ))
+                
+        return risk, traces
 
     @staticmethod
-    def _compute_content_risk(
-        llm_analysis: dict[str, Any],
-        identity_risk: float,
-        historical_risk: float,
-    ) -> float:
-        """Compute content-based risk from LLM analysis.
+    def _compute_content_risk(llm: LLMAnalysisResult, id_risk: float, hist_risk: float) -> Tuple[float, List[DecisionTrace]]:
+        traces = []
+        if not llm: return 0.0, traces
 
-        When both identity and historical risk are low, the LLM risk
-        gets halved to avoid urgency-only inflation.
-        """
-        if not llm_analysis or not isinstance(llm_analysis, dict):
-            return 0.0
-
-        raw_score = llm_analysis.get("risk_score", 0.0)
-        try:
-            llm_risk = float(raw_score)
-        except (TypeError, ValueError):
-            return 0.0
-
-        llm_risk = _clamp(llm_risk)
-
-        # Apply halving when both identity and historical are low
-        both_low = (
-            identity_risk < _LOW_RISK_THRESHOLD
-            and historical_risk < _LOW_RISK_THRESHOLD
-        )
+        risk = _clamp(llm.risk_score)
+        
+        traces.append(DecisionTrace(
+            rule_name="LLM_Content_Risk", evidence_source="llm.risk_score", weight_applied=risk,
+            explanation=f"LLM base risk score: {risk:.2f}"
+        ))
+        
+        both_low = (id_risk < config.LOW_RISK_THRESHOLD and hist_risk < config.LOW_RISK_THRESHOLD)
         if both_low:
-            return llm_risk * 0.5
-
-        return llm_risk
-
-    # ------------------------------------------------------------------
-    # Risk Level
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _compute_risk_level(risk_score: float) -> str:
-        """Map risk_score to a human-readable risk level."""
-        if risk_score >= 80:
-            return "Critical"
-        elif risk_score >= 60:
-            return "High"
-        elif risk_score >= 40:
-            return "Medium"
-        elif risk_score >= 20:
-            return "Low"
-        else:
-            return "Safe"
-
-    # ------------------------------------------------------------------
-    # Payment Circuit Breaker
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _check_payment_circuit_breaker(
-        extraction: dict[str, Any],
-    ) -> bool:
-        """Detect payment-change indicators in extraction evidence.
-
-        Returns True if any bank-account, routing-number, beneficiary,
-        new-payment, or wire-transfer signal is detected.
-        Uses the real ExtractionService output keys.
-        """
-        if not extraction:
-            return False
-
-        # Check payment_terms list from ExtractionService
-        payment_terms: list[str] = extraction.get("payment_terms", [])
-        for term in payment_terms:
-            for pattern in _PAYMENT_CIRCUIT_BREAKER_PHRASES:
-                if pattern.search(term):
-                    return True
-
-        # Also scan the raw content keys that ExtractionService may populate
-        # (e.g., subject line mentioning wire transfers)
-        for key in ("subject",):
-            val = extraction.get(key, "")
-            if isinstance(val, str):
-                for pattern in _PAYMENT_CIRCUIT_BREAKER_PHRASES:
-                    if pattern.search(val):
-                        return True
-
-        return False
-
+            risk *= config.CONTENT_RISK_HALVING_FACTOR
+            traces.append(DecisionTrace(
+                rule_name="Content_Risk_Halving", evidence_source="trust_engine", weight_applied=0.0,
+                explanation="Identity and historical risks are low. Halving content risk."
+            ))
+            
+        return risk, traces
 
 # ---------------------------------------------------------------------------
 # Module-level singleton

@@ -57,6 +57,10 @@ from app.services.trust_engine_service import (
     TrustEngineService,
     trust_engine_service as _default_trust_engine,
 )
+from app.models.trust_engine import (
+    LLMAnalysisResult,
+    GraphAnalysisResult
+)
 from app.services.threat_intel_service import (
     ThreatIntelService,
     threat_intel_service as _default_threat_intel,
@@ -238,11 +242,14 @@ class AnalyzerService:
         # 6. Trust Engine — deterministic scoring from all evidence.
         #    Runs after all evidence collection and explanation.
         #    Becomes the authoritative source of risk/trust/confidence.
+        
+        llm_model = LLMAnalysisResult(**evidence.llm_analysis) if evidence.llm_analysis else None
+        graph_model = GraphAnalysisResult(**evidence.graph_intel) if evidence.graph_intel else None
+
         trust_result = self._trust_engine.evaluate(
-            llm_analysis=evidence.llm_analysis,
-            extraction=evidence.extraction,
+            llm_analysis=llm_model,
             threat_intel=evidence.threat_intel or None,
-            graph_intel=evidence.graph_intel or None,
+            graph_intel=graph_model,
         )
 
         # 7. Build the result from evidence + trust engine output.
@@ -428,7 +435,7 @@ class AnalyzerService:
 
         When trust_result is provided (from TrustEngineService), it becomes
         the authoritative source for risk_score, risk_level, trust_score,
-        confidence_score, verification_required, and recommendation.
+        confidence_score, and recommendation.
         """
         llm = evidence.llm_analysis
 
@@ -457,7 +464,7 @@ class AnalyzerService:
             risk_level = trust_result.risk_level
             trust_score = trust_result.trust_score
             confidence_score = trust_result.confidence_score
-            verification_required = trust_result.verification_required
+            verification_required = False  # To be populated by future CircuitBreaker
             recommendation = trust_result.recommendation
         else:
             # Fallback to LLM-only scoring (legacy path)

@@ -1,202 +1,491 @@
+<div align="center">
+
 # 🛡️ TrustGuardian AI
 
-### **Enterprise Trust Intelligence & Phishing Tracer Platform**
+### Enterprise Trust Intelligence Platform
 
-> *"Shift the paradigm from 'Is this email clean?' to 'Should our organization trust this request?'"*
-
-TrustGuardian AI is a premium, developer-centric cybersecurity platform designed to protect enterprises against **Business Email Compromise (BEC)**, **CEO Fraud**, **Brand Impersonation**, and **financial workflow hijacking** in real time. By blending deterministic security scans, deep relationships on an Enterprise Knowledge Graph, and advanced cognitive AI, TrustGuardian acts as a self-healing defensive layer.
+*"Shifting the paradigm from*
+**'Is this email malicious?'**
+*to*
+**'Should the organization trust this request?'***
 
 ---
 
-## 🗺️ Architectural Workflow
+![React](https://img.shields.io/badge/Frontend-React%2019-61DAFB?style=for-the-badge&logo=react)
+![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi)
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python)
+![Neo4j](https://img.shields.io/badge/Graph-Neo4j-4581C3?style=for-the-badge&logo=neo4j)
+![Supabase](https://img.shields.io/badge/Database-Supabase-3ECF8E?style=for-the-badge&logo=supabase)
+![Gemini](https://img.shields.io/badge/LLM-Gemini-4285F4?style=for-the-badge)
+![Groq](https://img.shields.io/badge/Fallback-Groq-F55036?style=for-the-badge)
+
+</div>
+
+---
+
+# 📌 Overview
+
+TrustGuardian AI is an **Enterprise Trust Intelligence Platform** that protects organizations against **Business Email Compromise (BEC), CEO Fraud, Brand Impersonation, Social Engineering, and Workflow Manipulation**.
+
+Unlike conventional phishing detectors that only classify whether an email is malicious, TrustGuardian evaluates **whether an organization should trust a business request**.
+
+The platform combines deterministic security validation, explainable AI reasoning, enterprise relationship graphs, behavioral analysis, and historical trust modeling to deliver transparent and auditable security decisions.
+
+---
+
+# ✨ Key Features
+
+- Enterprise Trust Scoring Engine
+- Gmail API Integration
+- Multi-LLM Intelligent Routing
+- Automatic LLM Failover
+- Privacy Layer (PII Redaction)
+- SPF / DKIM / DMARC Validation
+- VirusTotal URL Reputation
+- Neo4j Knowledge Graph
+- Explainable AI Reports
+- Historical Trust Analysis
+- Interactive Cyber Dashboard
+- Confidence Score Generation
+- Risk Categorization
+- Threat Timeline
+- Live Security Alerts
+
+---
+
+# 🏗 System Architecture
 
 ```mermaid
 graph TD
-    A[Incoming Email/MIME] --> B[Extraction Service]
-    B -->|URLs/Domains| C[Threat Intel Service]
-    B -->|PII / Sensitive Data| D[PII Shield & Redaction]
-    B -->|Context Metadata| E[Secure Gateway]
-    
-    C -->|VirusTotal & Domain Auth| F[Evidence Aggregator]
-    D -->|Sanitized Prompt| G[Multi-LLM Router]
-    E -->|Urgency/Urgent Tags| F
-    
-    G -->|Gemini / Groq| H[Forensic AI Assessment]
-    H --> F
-    
-    F --> I[Trust Engine Service]
-    I -->|Deterministic Logic| J[Final Trust Result]
-    
-    J --> K[Supabase Postgres]
-    J --> L[Neo4j Knowledge Graph]
-    J --> M[Futuristic Cyber Dashboard]
+
+A[Incoming Email]
+-->B[Email Extraction Layer]
+
+B-->C[Threat Intelligence]
+
+B-->D[Privacy Layer]
+
+B-->E[Metadata Extraction]
+
+C-->F[Evidence Fusion]
+
+D-->G[Multi-LLM Router]
+
+G-->H[AI Analysis]
+
+H-->F
+
+E-->F
+
+F-->I[Trust Engine]
+
+I-->J[Neo4j Knowledge Graph]
+
+I-->K[Supabase]
+
+I-->L[Interactive Dashboard]
+
+I-->M[Explainable Report]
 ```
 
 ---
 
-## 🚀 The End-to-End Analysis Lifecycle (User to Result)
+# 🔄 Complete Analysis Workflow
 
-Here is exactly how TrustGuardian AI intercepts, parses, evaluates, and displays threats:
+## 1. User Authentication
 
-### 1. Secure Authentication & Gmail Connection
-* **User Onboarding:** The security analyst logs in via Supabase using **Google OAuth**.
-* **Gmail Active Connection:** Once logged in, the frontend stores the user's `google-provider-token` locally. If this token expires (typically after 60 minutes), the frontend displays an interactive `🟢 Gmail Active` button, allowing the user to refresh their session credentials with a single click.
-
-### 2. Live Email Fetching & Ingestion
-* **Real-time Pull:** When the dashboard renders, it initiates a secure query to the backend API, passing the OAuth token.
-* **MIME Parsing:** The backend [gmail_service.py](file:///c:/Users/shasheesh/OneDrive/Documents/final%20trust%20guardian%20AI/TrustGuardian-AI-1/backend/app/services/gmail_service.py) queries Google's Gmail API, pulls the most recent email thread, parses the MIME container, and splits it into header records (date, sender, subject) and the message body.
-* **Text Truncation Guard:** To protect downstream LLMs from context length restrictions, the body snippet is securely truncated to 2,000 characters.
-
-### 3. Verification & Threat Intelligence Scan
-* **Domain Security Audit:** The [threat_intel_service.py](file:///c:/Users/shasheesh/OneDrive/Documents/final%20trust%20guardian%20AI/TrustGuardian-AI-1/backend/app/services/threat_intel_service.py) inspects the parsed email headers:
-  * **SPF (Sender Policy Framework):** Verifies if the sending server is authorized by the domain's DNS.
-  * **DKIM (DomainKeys Identified Mail):** Validates cryptographic signatures to prove the email was not tampered with.
-  * **DMARC:** Verifies domain alignments.
-  * If any verification fails, the backend adds flags like `"SPF failed"`.
-* **VirusTotal API Link Inspection:** The service extracts all links (URLs) from the body text, encodes them, and queries the **VirusTotal v3 API**. If any security vendor flags the URL, a high-severity flag (e.g. `"1 URL(s) detected as malicious"`) is added. It uses an in-memory TTL cache to minimize API calls.
-
-### 4. PII Redaction & AI Analysis
-* **PII Redaction Guard:** Before transmitting data to the LLM, the [secure_gateway_service.py](file:///c:/Users/shasheesh/OneDrive/Documents/final%20trust%20guardian%20AI/TrustGuardian-AI-1/backend/app/services/secure_gateway_service.py) sanitizes sensitive identifiers (such as Aadhaar, PAN numbers, and bank details) to prevent leakage to external model providers.
-* **Parallel Orchestration:** The backend triggers parallel checks.
-* **AI Cognitive Scan:** The [llm_router.py](file:///c:/Users/shasheesh/OneDrive/Documents/final%20trust%20guardian%20AI/TrustGuardian-AI-1/backend/app/services/llm_router.py) routes the sanitized prompt to the primary AI model (**Gemini 2.5 Flash**). If Gemini is rate-limited (`429 RESOURCE_EXHAUSTED`), the router performs automatic failover to **Groq (Llama 3)**.
-* **Psychological Modeling:** The AI evaluates the request across 5 behavioral vectors:
-  * **Urgency:** Demanding immediate action.
-  * **Authority:** Impersonating executives.
-  * **Fear:** Warning of account suspensions.
-  * **Familiarity:** Imitating internal templates.
-  * **Intent:** Urging wiring instructions or credentials entry.
-
-### 5. Deterministic Trust Scoring
-* **Scoring Fusion:** The [trust_engine_service.py](file:///c:/Users/shasheesh/OneDrive/Documents/final%20trust%20guardian%20AI/TrustGuardian-AI-1/backend/app/services/trust_engine_service.py) gathers the AI's cognitive assessment, the header authentication results, and Neo4j graph history.
-* **Mathematical Weighting:** It applies configured weights:
-  * **Content Risk (AI):** Multiplied by content weight parameters.
-  * **Identity Risk (SPF/DKIM/VirusTotal):** Penalized by verification failures.
-  * **Historical Interaction (Neo4j Graph):** Rewards consistent history, penalizes sudden changes.
-* **Decision Calculation:** The final trust score is calculated (`100 - risk_score`) and mapped to a Risk Level (Safe, Low, Medium, High, Critical) and Action Recommendation (Allow, Verify, Block).
-
-### 6. Interactive Visualization
-* **Dynamic Indicators:** The frontend displays the parsed metrics:
-  * **Trust Index Gauge:** Changes color dynamically depending on the computed score.
-  * **Alert Badges:** Displays critical flags like `[⚠️ SPF failed]` or `[⚠️ 1 URL(s) detected as malicious]` directly on the UI card.
-  * **Radar Chart:** Shows the polygon density of the 5 psychological vectors.
-  * **Interactive Graphs:** Renders trust relationship paths in Neo4j.
+- Login using Google OAuth via Supabase.
+- Secure authentication tokens are issued.
+- Gmail account is connected securely.
 
 ---
 
-## 🎨 Premium HUD Interface & Design System
+## 2. Gmail Email Extraction
 
-TrustGuardian features a world-class cybersecurity **VisionOS / Cyberpunk HUD** theme:
-* ** obsidian Backdrop:** Deep black background `#050816` accented with dynamic glassmorphism and subtle glowing borders.
-* **Interactive WebGL Background:** Built using **Three.js**—displays a 3D starfield of 300 floating dust particles. The camera tracks your mouse cursor, creating a smooth parallax sway as you move.
-* **Futuristic Animated Logo:** Built using Three.js—features a rotating, pulsing 3D wireframe icosahedron (representing secure network nodes) fused behind a sharp 2D vector security shield.
-* **Interactive Graph Visualization:** Powered by **Cytoscape.js**—visualizes network relationships, trust propagation paths, and threat vectors on a canvas that supports zooming, panning, and click inspection.
+The backend connects to Gmail using the Gmail API and securely retrieves incoming emails.
+
+Information extracted includes:
+
+- Sender Information
+- Email Headers
+- Subject
+- Email Body
+- URLs
+- Attachments
+- Message Metadata
 
 ---
 
-## 📁 Repository Structure
+## 3. Threat Intelligence
+
+The Threat Intelligence module performs deterministic verification.
+
+### Email Authentication
+
+- SPF Verification
+- DKIM Verification
+- DMARC Verification
+
+### Reputation Checks
+
+- VirusTotal URL Scan
+- Domain Reputation
+- Malicious Link Detection
+
+---
+
+## 4. Privacy Layer
+
+Before any AI model receives the email:
+
+Sensitive information is automatically removed.
+
+Examples:
+
+- Aadhaar Numbers
+- PAN Numbers
+- Bank Accounts
+- Phone Numbers
+- Email Addresses
+- Employee IDs
+- Customer Information
+
+The LLM only receives a sanitized version.
+
+No sensitive enterprise information leaves the organization.
+
+---
+
+## 5. Multi-LLM Intelligent Routing
+
+TrustGuardian uses multiple AI providers.
+
+Primary:
+
+- Gemini 2.5 Flash
+
+Fallback:
+
+- Groq (Llama 3)
+
+The router automatically switches providers when:
+
+- Token limits are reached
+- Rate limits occur
+- Provider becomes unavailable
+
+This guarantees uninterrupted AI analysis.
+
+---
+
+## 6. AI Behavioral Analysis
+
+The AI analyzes psychological manipulation techniques.
+
+Including:
+
+- Urgency
+- Authority
+- Fear
+- Familiarity
+- Financial Requests
+- Credential Requests
+- Intent
+
+---
+
+## 7. Evidence Fusion Engine
+
+Instead of trusting one AI response, TrustGuardian combines evidence from multiple sources.
+
+Evidence includes:
+
+- VirusTotal
+- SPF
+- DKIM
+- DMARC
+- AI Assessment
+- Historical Trust
+- Neo4j Relationships
+
+The Trust Engine mathematically combines this evidence to generate explainable trust scores.
+
+---
+
+## 8. Trust Engine
+
+The Trust Engine calculates:
+
+- Trust Score
+- Confidence Score
+- Risk Level
+- Recommended Action
+
+Possible actions:
+
+- Allow
+- Verify
+- Block
+
+---
+
+## 9. Neo4j Knowledge Graph
+
+Historical organizational relationships are stored as a graph.
+
+Examples:
+
+Employee
+
+↓
+
+Department
+
+↓
+
+Manager
+
+↓
+
+Vendor
+
+↓
+
+Domain
+
+↓
+
+Past Communications
+
+↓
+
+Historical Trust
+
+The graph enriches future decisions using historical behavior.
+
+---
+
+## 10. Explainable AI Report
+
+Instead of saying
+
+> "Risk Score = 82"
+
+TrustGuardian explains
+
+- Why
+- Which evidence contributed
+- Which AI indicators were detected
+- Which authentication failed
+- Recommended action
+- Confidence level
+
+---
+
+# 🎨 Dashboard
+
+The dashboard includes:
+
+- Enterprise Trust Overview
+- Live Email Analysis
+- Trust Score Gauge
+- Threat Timeline
+- Knowledge Graph
+- Risk Categories
+- Confidence Meter
+- Explainable Decision Panel
+- Interactive Cyber Animations
+- Real-Time Alerts
+
+---
+
+# 🧠 Core Modules
+
+| Module | Purpose |
+|---------|----------|
+| Authentication | Google OAuth Login |
+| Gmail Service | Email Retrieval |
+| Extraction Layer | MIME Parsing |
+| Threat Intelligence | SPF / DKIM / DMARC / VirusTotal |
+| Privacy Layer | PII Redaction |
+| Multi-LLM Router | Gemini → Groq Failover |
+| AI Analyzer | Behavioral Analysis |
+| Evidence Fusion | Evidence Aggregation |
+| Trust Engine | Explainable Trust Score |
+| Neo4j Service | Relationship Intelligence |
+| Dashboard | Visualization |
+| Report Generator | Explainable Reports |
+
+---
+
+# 📂 Project Structure
 
 ```
 TrustGuardian-AI/
-├── frontend/                  # React + TypeScript Web App
-│   ├── src/
-│   │   ├── api/               # API clients (Supabase, axios interceptors)
-│   │   ├── components/        # Layout, Cyber panels, Three.js canvases
-│   │   ├── pages/             # Dashboard, Sandbox, Analyzer, Graph views
-│   │   └── store/             # Zustand auth & session states
-│   ├── package.json
-│   └── tailwind.config.js
+
+frontend/
 │
-├── backend/                   # FastAPI Backend Application
-│   ├── app/
-│   │   ├── api/               # Endpoints (dashboard, requests, auth)
-│   │   ├── models/            # Pydantic schemas and database models
-│   │   ├── services/          # Core modules (LLM router, VT scans, Trust Engine)
-│   │   └── main.py            # Gateway initialization
-│   ├── .env.example
-│   └── requirements.txt
+├── src/
+│   ├── api/
+│   ├── components/
+│   ├── pages/
+│   ├── hooks/
+│   ├── store/
+│   ├── animations/
+│   └── assets/
+
+backend/
 │
-└── README.md                  # System documentation
+├── app/
+│   ├── api/
+│   ├── models/
+│   ├── services/
+│   ├── graph/
+│   ├── llm/
+│   ├── trust_engine/
+│   └── main.py
+
+README.md
 ```
 
 ---
 
-## 🛠️ Tech Stack & Dependencies
+# ⚙ Technology Stack
 
-| Layer | Technologies |
-|-------|--------------|
-| **Frontend Framework** | React 19, TypeScript, Vite |
-| **Styling & Motion** | Tailwind CSS, Framer Motion, Vanilla CSS |
-| **Interactive 3D Graphic**| Three.js (WebGL Canvas) |
-| **Graph Visualizer** | Cytoscape.js |
-| **Backend Engine** | FastAPI, Python 3.11+, Uvicorn |
-| **Database & Auth** | Supabase PostgreSQL, Supabase Auth (Google OAuth) |
-| **Graph Database** | Neo4j Aura DB / Docker |
-| **AI Models** | Gemini 2.5 Flash SDK, Llama 3 via Groq |
-| **Threat Intelligence** | VirusTotal API v3 |
-| **Email Integration** | Google Workspace / Gmail API |
-
----
-
-## 🚀 Installation & Local Launch
-
-### 1. Prerequisites
-Ensure you have the following installed on your machine:
-* **Node.js** (v18+)
-* **Python** (v3.11+)
-* **Docker** (Optional, to run local database instances)
+| Layer | Technology |
+|--------|------------|
+| Frontend | React 19 + TypeScript + Vite |
+| UI | TailwindCSS |
+| Animations | Framer Motion |
+| 3D Graphics | Three.js |
+| Graph Visualisation | Cytoscape.js |
+| Backend | FastAPI |
+| Database | Supabase PostgreSQL |
+| Graph Database | Neo4j Aura |
+| AI | Gemini 2.5 Flash |
+| AI Fallback | Groq (Llama 3) |
+| Threat Intelligence | VirusTotal API |
+| Email Integration | Gmail API |
 
 ---
 
-### 2. Backend Setup
-1. Open a terminal and navigate to the backend folder:
-   ```bash
-   cd backend
-   ```
-2. Create and activate a Python virtual environment:
-   ```bash
-   python -m venv .venv
-   # On Windows:
-   .venv\Scripts\activate
-   # On MacOS/Linux:
-   source .venv/bin/activate
-   ```
-3. Install the dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Copy the environment template and configure your API keys:
-   ```bash
-   cp .env.example .env
-   ```
-   * *Configure `GEMINI_API_KEY`, `VIRUSTOTAL_API_KEY`, and Supabase credentials inside `.env`.*
-5. Run the FastAPI development server:
-   ```bash
-   uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-   ```
+# 🚀 Installation
+
+## Backend
+
+```bash
+cd backend
+
+python -m venv .venv
+
+source .venv/bin/activate
+
+pip install -r requirements.txt
+
+cp .env.example .env
+
+uvicorn app.main:app --reload
+```
 
 ---
 
-### 3. Frontend Setup
-1. Open a new terminal window and navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-2. Install the node packages (includes `three` and `@types/three`):
-   ```bash
-   npm install
-   ```
-3. Copy the environment configuration file:
-   ```bash
-   cp .env.example .env
-   ```
-   * *Configure your Supabase URL, Anon Keys, and Client IDs.*
-4. Start the local Vite development server:
-   ```bash
-   npm run dev
-   ```
-5. Open your browser and navigate to the local hosting port (usually `http://localhost:5173`) to view the application.
+## Frontend
+
+```bash
+cd frontend
+
+npm install
+
+cp .env.example .env
+
+npm run dev
+```
 
 ---
 
-## 📄 License
-This project is licensed under the MIT License.
+# 🔑 Environment Variables
+
+Backend
+
+```
+GEMINI_API_KEY=
+
+GROQ_API_KEY=
+
+VIRUSTOTAL_API_KEY=
+
+SUPABASE_URL=
+
+SUPABASE_SERVICE_KEY=
+
+NEO4J_URI=
+
+NEO4J_USER=
+
+NEO4J_PASSWORD=
+```
+
+Frontend
+
+```
+VITE_SUPABASE_URL=
+
+VITE_SUPABASE_ANON_KEY=
+
+VITE_GOOGLE_CLIENT_ID=
+```
+
+---
+
+# 📊 Current Implementation Status
+
+| Module | Status |
+|----------|----------|
+| Google OAuth | ✅ |
+| Gmail API | ✅ |
+| MIME Parser | ✅ |
+| SPF/DKIM/DMARC | ✅ |
+| VirusTotal Integration | ✅ |
+| Privacy Layer | ✅ |
+| Multi-LLM Router | ✅ |
+| Automatic Failover | ✅ |
+| Trust Engine | ✅ |
+| Neo4j Integration | ✅ |
+| Supabase Storage | ✅ |
+| Interactive Dashboard | 🚧 |
+| Decision Sandbox | 🚧 |
+| Trust Replay | 🚧 |
+| Analyst Copilot | 🚧 |
+
+---
+
+# 🔮 Future Roadmap
+
+- Decision Sandbox™
+- Trust Replay™
+- Continuous Learning
+- Analyst Copilot
+- Threat Campaign Discovery
+- Browser Extension
+- Outlook Integration
+- Microsoft Teams Integration
+- Slack Integration
+
+---
+
+# 📜 License
+
+This project is licensed under the **MIT License**.
+
+---
+
+<div align="center">
+
+### TrustGuardian AI
+
+**Enterprise Trust Intelligence Platform**
+
+*"Trust is not predicted.*
+*It is explained."*
+
+</div>

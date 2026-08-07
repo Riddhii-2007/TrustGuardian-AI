@@ -261,8 +261,8 @@ class AnalyzerService:
         #    Runs after all evidence collection and explanation.
         #    Becomes the authoritative source of risk/trust/confidence.
         
-        llm_model = LLMAnalysisResult(**evidence.llm_analysis) if evidence.llm_analysis else None
-        graph_model = GraphAnalysisResult(**evidence.graph_intel) if evidence.graph_intel else None
+        llm_model = LLMAnalysisResult(**evidence.llm_analysis) if (evidence.llm_analysis and len(evidence.llm_analysis) > 0) else None
+        graph_model = GraphAnalysisResult(**evidence.graph_intel) if (evidence.graph_intel and len(evidence.graph_intel) > 0) else None
 
         trust_result = self._trust_engine.evaluate(
             llm_analysis=llm_model,

@@ -18,7 +18,7 @@ from typing import List
 
 from pydantic import BaseModel, Field
 
-from app.models.request import PsychologyFactors
+from app.models.request import PsychologyFactors, QuickResult, DetailedReport
 from app.models.threat_intel import ThreatIntelResult
 
 
@@ -135,15 +135,19 @@ class ScanResult(BaseModel):
     Mapped to the public AnalysisResult model at the API boundary.
     """
 
-    scan_type: ScanType
-    risk_score: float
-    risk_level: str
-    psychology: PsychologyFactors
-    flags: List[str]
-    explanation: str
-    evidence: ScanEvidence
-    latency_ms: int = 0
-    trust_score: float = 50.0
-    confidence_score: float = 0.0
-    verification_required: bool = False
-    recommendation: str = "Pending analysis"
+    scan_type:             ScanType
+    risk_score:            float
+    risk_level:            str
+    psychology:            PsychologyFactors
+    flags:                 List[str]
+    explanation:           str
+    evidence:              ScanEvidence
+    latency_ms:            int   = 0
+    trust_score:           float = 50.0
+    confidence_score:      float = 0.0
+    verification_required: bool  = False
+    recommendation:        str   = "Pending analysis"
+    # v2 additions
+    quick_result:          Optional[QuickResult]    = None
+    detailed_report:       Optional[DetailedReport] = None
+

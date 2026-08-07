@@ -12,6 +12,7 @@ from app.services.exceptions import LLMServiceError
 from app.services.providers.base import BaseLLMProvider
 from app.services.providers.gemini_provider import GeminiProvider
 from app.services.providers.groq_provider import GroqProvider
+from app.services.providers.openrouter_provider import OpenRouterProvider
 
 # ---------------------------------------------------------------------------
 # Provider Registry
@@ -24,8 +25,9 @@ from app.services.providers.groq_provider import GroqProvider
 # No changes to LLMService or existing providers are required.
 # ---------------------------------------------------------------------------
 PROVIDER_REGISTRY: dict[str, type[BaseLLMProvider]] = {
-    "gemini": GeminiProvider,
-    "groq": GroqProvider,
+    "gemini":     GeminiProvider,
+    "groq":       GroqProvider,
+    "openrouter": OpenRouterProvider,
 }
 
 
@@ -64,6 +66,7 @@ __all__ = [
     "BaseLLMProvider",
     "GeminiProvider",
     "GroqProvider",
+    "OpenRouterProvider",
     "PROVIDER_REGISTRY",
     "get_provider",
 ]

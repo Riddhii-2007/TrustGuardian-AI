@@ -12,6 +12,8 @@ build/
 # ==============================
 __pycache__/
 *.py[cod]
+*.pyo
+*.pyd
 *$py.class
 *.so
 .Python
@@ -26,9 +28,7 @@ venv/
 # Environment Variables
 # ==============================
 .env
-.env.local
-.env.production
-.env.staging
+.env.*
 !.env.example
 
 # ==============================

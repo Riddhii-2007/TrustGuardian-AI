@@ -167,6 +167,7 @@ class AnalyzerService:
         self._threat_intel = threat_intel_service or _default_threat_intel
         # self._graph = graph_service                # future
         self._secure_gateway = secure_gateway or _default_secure_gateway
+        self._scan_cache = {}
 
         logger.info(
             "AnalyzerService initialized | llm=%s | explainable=%s "
@@ -214,6 +215,13 @@ class AnalyzerService:
         Returns:
             AnalysisResult — the public-facing model, schema unchanged.
         """
+        import hashlib
+        content_hash = hashlib.md5(request.content.encode('utf-8', errors='replace')).hexdigest()
+        cache_key = f"{request.scan_type.value}:{content_hash}"
+        if hasattr(self, "_scan_cache") and cache_key in self._scan_cache:
+            logger.info("Cache hit for scan request — returning cached AnalysisResult.")
+            return self._scan_cache[cache_key]
+
         start_time = time.monotonic()
 
         # 1. Validate — short-circuit on empty content
@@ -286,7 +294,10 @@ class AnalyzerService:
         )
 
         # 8. Map to the public model at the API boundary.
-        return self._to_analysis_result(scan_result)
+        res = self._to_analysis_result(scan_result)
+        if hasattr(self, "_scan_cache"):
+            self._scan_cache[cache_key] = res
+        return res
 
     # ------------------------------------------------------------------
     # Evidence Collection
@@ -309,6 +320,8 @@ class AnalyzerService:
         """
         # Sanitise request content for the LLM using the Secure AI Gateway
         sanitized_content = self._secure_gateway.sanitize_text(request.content)
+        if len(sanitized_content) > 3000:
+            sanitized_content = sanitized_content[:3000] + "\n[Content truncated due to length limits...]"
         user_prompt = f"Analyze this business request:\n\n{sanitized_content}"
         system_prompt = self._get_system_prompt(request.scan_type)
 

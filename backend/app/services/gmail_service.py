@@ -92,6 +92,10 @@ class GmailService:
                             logger.error(f"Failed to decode body: {e}")
                             pass
         
+        # Truncate body length for prompt token optimization
+        if len(body) > 2000:
+            body = body[:2000] + "..."
+
         return {
             "id": msg_data.get("id"),
             "subject": subject,

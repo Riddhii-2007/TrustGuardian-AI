@@ -46,7 +46,7 @@ async def get_dashboard_stats(
 ):
     emails = []
     if google_token:
-        emails = await gmail_service.fetch_recent_emails(google_token, limit=5)
+        emails = await gmail_service.fetch_recent_emails(google_token, limit=1)
     
     analyzed_results = []
     if emails:
@@ -111,7 +111,7 @@ async def get_recent_activity(
     activity = []
     
     if google_token:
-        emails = await gmail_service.fetch_recent_emails(google_token, limit=5)
+        emails = await gmail_service.fetch_recent_emails(google_token, limit=1)
         
         if emails:
             analyzed_results = []

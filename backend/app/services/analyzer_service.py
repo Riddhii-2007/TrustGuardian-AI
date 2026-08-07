@@ -52,7 +52,7 @@ from app.services.extraction_service import (
     ExtractionService,
     extraction_service as _default_extraction,
 )
-from app.services.llm_service import LLMService, llm_service as _default_llm
+from app.services.llm_router import LLMRouter, llm_router as _default_llm
 from app.services.trust_engine_service import (
     TrustEngineService,
     trust_engine_service as _default_trust_engine,
@@ -133,7 +133,7 @@ class AnalyzerService:
 
     def __init__(
         self,
-        llm_service: LLMService | None = None,
+        llm_service: LLMRouter | None = None,
         explainable_service: ExplainableService | None = None,
         extraction_service: ExtractionService | None = None,
         trust_engine: TrustEngineService | None = None,

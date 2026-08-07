@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     NEO4J_PASSWORD: str = "password"
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
 
+    # Multi-LLM Router
+    LLM_ROUTER_COOLDOWN_SECONDS: int = 60
+
     class Config:
         env_file = ".env"
 

@@ -1,6 +1,6 @@
 import logging
 from app.prompts.explainable_prompt import EXPLAINABLE_SYSTEM_PROMPT
-from app.services.llm_service import llm_service
+from app.services.llm_router import llm_router
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +11,7 @@ class ExplainableService:
     """
 
     def __init__(self, llm_service_instance=None):
-        self.llm_service = llm_service_instance or llm_service
+        self.llm_service = llm_service_instance or llm_router
 
     async def generate_explanation(self, context_data: dict) -> str:
         """

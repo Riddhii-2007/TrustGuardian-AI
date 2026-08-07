@@ -61,6 +61,10 @@ from app.services.threat_intel_service import (
     ThreatIntelService,
     threat_intel_service as _default_threat_intel,
 )
+from app.services.secure_gateway_service import (
+    SecureGatewayService,
+    secure_gateway_service as _default_secure_gateway,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +139,7 @@ class AnalyzerService:
         # ---------------------------------------------------------------
         threat_intel_service: ThreatIntelService | None = None,
         # graph_service: GraphService | None = None,
+        secure_gateway: SecureGatewayService | None = None,
     ) -> None:
         """Initialize with optional service overrides (dependency injection).
 
@@ -147,14 +152,16 @@ class AnalyzerService:
         self._trust_engine = trust_engine or _default_trust_engine
         self._threat_intel = threat_intel_service or _default_threat_intel
         # self._graph = graph_service                # future
+        self._secure_gateway = secure_gateway or _default_secure_gateway
 
         logger.info(
             "AnalyzerService initialized | llm=%s | explainable=%s "
-            "| extraction=%s | trust_engine=%s",
+            "| extraction=%s | trust_engine=%s | secure_gateway=%s",
             type(self.llm_service).__name__,
             type(self._explainable).__name__,
             type(self._extraction).__name__,
             type(self._trust_engine).__name__,
+            type(self._secure_gateway).__name__,
         )
 
     # ------------------------------------------------------------------
@@ -283,12 +290,12 @@ class AnalyzerService:
         future services are wired in before the LLM stage, their output
         will automatically be forwarded here.
         """
-        user_prompt = f"Analyze this business request:\n\n{request.content}"
+        # Sanitise request content for the LLM using the Secure AI Gateway
+        sanitized_content = self._secure_gateway.sanitize_text(request.content)
+        user_prompt = f"Analyze this business request:\n\n{sanitized_content}"
         system_prompt = self._get_system_prompt(request.scan_type)
 
         # Build LLM context from non-empty future evidence slots.
-        # Currently always empty; future services populate these before
-        # the LLM call so they contribute to AI reasoning.
         context = {
             key: val
             for key, val in evidence.model_dump(
@@ -296,12 +303,14 @@ class AnalyzerService:
             ).items()
             if val  # omit empty dicts — no noise in the LLM prompt
         }
+        # Sanitise nested context data to mask PII before it leaves the backend
+        sanitized_context = self._secure_gateway.sanitize_data(context)
 
         async def _call() -> dict:
             result = await self.llm_service.analyze(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
-                evidence=context or None,
+                evidence=sanitized_context or None,
             )
             return result.analysis if isinstance(result.analysis, dict) else {}
 
@@ -309,6 +318,7 @@ class AnalyzerService:
         evidence.llm_analysis = llm_data
         if llm_data:
             evidence.services_used.append("llm")
+            evidence.services_used.append("secure_gateway")
 
     async def _collect_explanation(
         self,

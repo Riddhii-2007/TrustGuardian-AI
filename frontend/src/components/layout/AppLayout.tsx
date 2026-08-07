@@ -19,7 +19,7 @@ const AppLayout: React.FC = () => {
 
         {/* Page Content */}
         <div className="flex-1 overflow-auto p-6 bg-grid">
-          <div className="max-w-7xl mx-auto h-full">
+          <div className="w-full h-full">
             <Outlet />
           </div>
         </div>

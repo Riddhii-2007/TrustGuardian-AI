@@ -1,5 +1,6 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import OAuth2PasswordBearer
+from typing import Optional
 from app.db.supabase import get_supabase
 from app.db.neo4j import get_neo4j_driver
 from app.models.auth import TokenPayload
@@ -42,3 +43,6 @@ async def verify_token(token: str = Depends(oauth2_scheme)) -> TokenPayload:
             detail=f"Could not validate credentials: {str(e)}",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+async def get_google_token(x_google_provider_token: Optional[str] = Header(None)) -> Optional[str]:
+    return x_google_provider_token

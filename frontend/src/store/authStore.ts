@@ -52,9 +52,13 @@ export const useAuthStore = create<AuthStore>((set) => ({
         
         // Save token for axios interceptor
         localStorage.setItem('supabase-auth-token', session.access_token);
+        if (session.provider_token) {
+          localStorage.setItem('google-provider-token', session.provider_token);
+        }
         set({ user: userProfile, accessToken: session.access_token, isAuthenticated: true, isLoading: false });
       } else {
         localStorage.removeItem('supabase-auth-token');
+        localStorage.removeItem('google-provider-token');
         set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });
       }
 
@@ -70,9 +74,13 @@ export const useAuthStore = create<AuthStore>((set) => ({
             created_at: session.user.created_at,
           };
           localStorage.setItem('supabase-auth-token', session.access_token);
+          if (session.provider_token) {
+            localStorage.setItem('google-provider-token', session.provider_token);
+          }
           set({ user: userProfile, accessToken: session.access_token, isAuthenticated: true, isLoading: false });
         } else {
           localStorage.removeItem('supabase-auth-token');
+          localStorage.removeItem('google-provider-token');
           set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });
         }
       });
@@ -86,6 +94,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     set({ isLoading: true });
     await supabase.auth.signOut();
     localStorage.removeItem('supabase-auth-token');
+    localStorage.removeItem('google-provider-token');
     set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });
   }
 }));

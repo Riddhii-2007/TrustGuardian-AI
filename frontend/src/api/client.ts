@@ -20,9 +20,14 @@ apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // We will hook this up to Supabase auth state later
     const token = localStorage.getItem('supabase-auth-token');
+    const providerToken = localStorage.getItem('google-provider-token');
     
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    
+    if (providerToken && config.headers) {
+      config.headers['X-Google-Provider-Token'] = providerToken;
     }
     
     return config;

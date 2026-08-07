@@ -19,6 +19,7 @@ from typing import List
 from pydantic import BaseModel, Field
 
 from app.models.request import PsychologyFactors
+from app.models.threat_intel import ThreatIntelResult
 
 
 class ScanType(str, Enum):
@@ -103,9 +104,9 @@ class ScanEvidence(BaseModel):
         default_factory=dict,
         description="Indicators extracted from content (ExtractionService -- future).",
     )
-    threat_intel: dict = Field(
-        default_factory=dict,
-        description="External threat intelligence findings (ThreatIntelService -- future).",
+    threat_intel: ThreatIntelResult | None = Field(
+        default=None,
+        description="External threat intelligence findings (ThreatIntelService).",
     )
     graph_intel: dict = Field(
         default_factory=dict,

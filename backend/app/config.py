@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     
+    # Threat Intel
+    VIRUSTOTAL_API_KEY: str = ""
+    
     # Neo4j
     NEO4J_URI: str = ""
     NEO4J_USER: str = ""

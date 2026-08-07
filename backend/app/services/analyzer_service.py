@@ -57,6 +57,10 @@ from app.services.trust_engine_service import (
     TrustEngineService,
     trust_engine_service as _default_trust_engine,
 )
+from app.services.threat_intel_service import (
+    ThreatIntelService,
+    threat_intel_service as _default_threat_intel,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +133,7 @@ class AnalyzerService:
         # Future services — inject here when each is implemented.
         # Uncomment as their dedicated implementations become available.
         # ---------------------------------------------------------------
-        # threat_intel_service: ThreatIntelService | None = None,
+        threat_intel_service: ThreatIntelService | None = None,
         # graph_service: GraphService | None = None,
     ) -> None:
         """Initialize with optional service overrides (dependency injection).
@@ -141,7 +145,7 @@ class AnalyzerService:
         self._explainable = explainable_service or _default_explainable
         self._extraction = extraction_service or _default_extraction
         self._trust_engine = trust_engine or _default_trust_engine
-        # self._threat_intel = threat_intel_service  # future
+        self._threat_intel = threat_intel_service or _default_threat_intel
         # self._graph = graph_service                # future
 
         logger.info(
@@ -216,7 +220,7 @@ class AnalyzerService:
             # Future evidence stages — add here as services are built.
             # Each runs concurrently alongside the LLM call.
             # ----------------------------------------------------------
-            # self._collect_threat_intel_evidence(request, evidence),
+            self._collect_threat_intel_evidence(request, evidence),
             # self._collect_graph_evidence(request, evidence),
         )
 
@@ -369,11 +373,25 @@ class AnalyzerService:
     # Once implemented, uncomment the corresponding line in scan() step 4.
     # ------------------------------------------------------------------
 
-    # async def _collect_threat_intel_evidence(
-    #     self, request: ScanRequest, evidence: ScanEvidence
-    # ) -> None:
-    #     """TODO: ThreatIntelService — query external threat intel sources."""
-    #     ...
+    async def _collect_threat_intel_evidence(
+        self, request: ScanRequest, evidence: ScanEvidence
+    ) -> None:
+        """Call ThreatIntelService and populate evidence.threat_intel."""
+        async def _call() -> ThreatIntelResult:
+            return await self._threat_intel.analyze(
+                content=request.content,
+                headers=request.metadata.get("headers", {})
+            )
+
+        threat_intel_result = await self._run_safe(
+            "threat_intel",
+            _call(),
+            default=ThreatIntelResult(),
+            evidence=evidence
+        )
+        evidence.threat_intel = threat_intel_result
+        if threat_intel_result.urls_checked > 0 or any(val != "NONE" for val in [threat_intel_result.spf, threat_intel_result.dkim, threat_intel_result.dmarc]):
+            evidence.services_used.append("threat_intel")
 
     # async def _collect_graph_evidence(
     #     self, request: ScanRequest, evidence: ScanEvidence

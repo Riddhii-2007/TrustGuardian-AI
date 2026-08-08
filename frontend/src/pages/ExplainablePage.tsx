@@ -17,20 +17,116 @@ interface EvidenceItem {
 const ExplainablePage: React.FC = () => {
   const [selectedVector, setSelectedVector] = useState<string>('urgency');
 
-  const vectors = [
-    { id: 'urgency', label: 'Urgency Index', value: 88, desc: 'High frequency of pressure keywords demanding immediate action.', color: 'text-red-400', barBg: 'bg-red-500' },
-    { id: 'authority', label: 'Authority Impersonation', value: 78, desc: 'Claiming corporate seniority to bypass direct validation paths.', color: 'text-orange-400', barBg: 'bg-orange-500' },
-    { id: 'fear', label: 'Fear Induction', value: 45, desc: 'Implying negative consequences or operational downtime if ignored.', color: 'text-yellow-400', barBg: 'bg-yellow-500' },
-    { id: 'familiarity', label: 'False Familiarity', value: 30, desc: 'Using colloquial greetings or mimicking internal department styles.', color: 'text-cyan-400', barBg: 'bg-cyan-500' },
-    { id: 'intent', label: 'Malicious Intent', value: 85, desc: 'Core request redirects to wiring or modifying system configurations.', color: 'text-pink-400', barBg: 'bg-pink-500' }
-  ];
+  // Load latest scan analysis from localStorage
+  const recentAnalysisRaw = localStorage.getItem('recent_analysis');
+  let recentAnalysis: any = null;
+  if (recentAnalysisRaw) {
+    try {
+      const parsed = JSON.parse(recentAnalysisRaw);
+      recentAnalysis = parsed.analysis || parsed;
+    } catch (e) {
+      console.error('Failed to parse recent analysis:', e);
+    }
+  }
 
-  const evidenceList: EvidenceItem[] = [
-    { id: 'ev-1', source: 'Domain reputation lookup', weight: 95, type: 'risk', details: 'Sender domain matches trustguardian.ai closely but has subtle typo (e.g. trustgardian).' },
-    { id: 'ev-2', source: 'PII Shield Scan', weight: 80, type: 'risk', details: 'Direct reference to updating a direct deposit routing path detected in the email body.' },
-    { id: 'ev-3', source: 'Language Parsing Model', weight: 90, type: 'risk', details: 'Command verbs (wire, immediately, bypass, urgent) grouped with high density.' },
-    { id: 'ev-4', source: 'SPF / DKIM Signatures', weight: 100, type: 'safety', details: 'Sender SPF headers passed verification, indicating a valid server origin.' }
-  ];
+  const getVectorDesc = (id: string, val: number) => {
+    if (val < 50) {
+      switch (id) {
+        case 'urgency': return 'No abnormal urgency or temporal pressure cues detected.';
+        case 'authority': return 'No unusual hierarchical pressure or executive coercion signs.';
+        case 'fear': return 'No fear-based manipulation or negative consequence warnings.';
+        case 'familiarity': return 'Familiarity and greetings represent regular organizational formats.';
+        default: return 'No suspicious request patterns targeting system configurations.';
+      }
+    } else {
+      switch (id) {
+        case 'urgency': return 'High frequency of pressure keywords demanding immediate action.';
+        case 'authority': return 'Claiming corporate seniority to bypass direct validation paths.';
+        case 'fear': return 'Implying negative consequences or operational downtime if ignored.';
+        case 'familiarity': return 'Using colloquial greetings or mimicking internal department styles.';
+        default: return 'Core request redirects to wiring or modifying system configurations.';
+      }
+    }
+  };
+
+  const getVectorVal = (id: string) => {
+    if (!recentAnalysis || !recentAnalysis.psychology) return null;
+    const val = recentAnalysis.psychology[id];
+    return typeof val === 'number' ? Math.round(val * 100) : null;
+  };
+
+  const vectors = [
+    { id: 'urgency', label: 'Urgency Index', value: getVectorVal('urgency') ?? 88, color: 'text-red-400', barBg: 'bg-red-500' },
+    { id: 'authority', label: 'Authority Impersonation', value: getVectorVal('authority') ?? 78, color: 'text-orange-400', barBg: 'bg-orange-500' },
+    { id: 'fear', label: 'Fear Induction', value: getVectorVal('fear') ?? 45, color: 'text-yellow-400', barBg: 'bg-yellow-500' },
+    { id: 'familiarity', label: 'False Familiarity', value: getVectorVal('familiarity') ?? 30, color: 'text-cyan-400', barBg: 'bg-cyan-500' },
+    { id: 'intent', label: 'Malicious Intent', value: getVectorVal('intent') ?? 85, color: 'text-pink-400', barBg: 'bg-pink-500' }
+  ].map(v => ({
+    ...v,
+    desc: getVectorDesc(v.id, v.value)
+  }));
+
+  let evidenceList: EvidenceItem[] = [];
+  if (recentAnalysis) {
+    let index = 1;
+    // 1. Mandatory verification check
+    if (recentAnalysis.verification_required) {
+      evidenceList.push({
+        id: `ev-${index++}`,
+        source: 'Circuit Breaker Guard',
+        weight: 100,
+        type: 'risk',
+        details: 'Mandatory verification triggered: Request patterns match bank account or payment detail modification rules.'
+      });
+    }
+    // 2. Flags from LLM
+    if (recentAnalysis.flags && Array.isArray(recentAnalysis.flags)) {
+      recentAnalysis.flags.forEach((flag: string) => {
+        evidenceList.push({
+          id: `ev-${index++}`,
+          source: 'Behavioral Tactic',
+          weight: 85,
+          type: 'risk',
+          details: flag
+        });
+      });
+    }
+    // 3. Negative signals
+    const negs = recentAnalysis.detailed_report?.negative_signals;
+    if (negs && Array.isArray(negs)) {
+      negs.forEach((neg: string) => {
+        evidenceList.push({
+          id: `ev-${index++}`,
+          source: 'Negative Indicator',
+          weight: 75,
+          type: 'risk',
+          details: neg
+        });
+      });
+    }
+    // 4. Positive signals
+    const poss = recentAnalysis.detailed_report?.positive_signals;
+    if (poss && Array.isArray(poss)) {
+      poss.forEach((pos: string) => {
+        evidenceList.push({
+          id: `ev-${index++}`,
+          source: 'Positive Signal',
+          weight: 100,
+          type: 'safety',
+          details: pos
+        });
+      });
+    }
+  }
+
+  if (evidenceList.length === 0) {
+    evidenceList = [
+      { id: 'ev-1', source: 'Domain reputation lookup', weight: 95, type: 'risk', details: 'Sender domain matches trustguardian.ai closely but has subtle typo (e.g. trustgardian).' },
+      { id: 'ev-2', source: 'PII Shield Scan', weight: 80, type: 'risk', details: 'Direct reference to updating a direct deposit routing path detected in the email body.' },
+      { id: 'ev-3', source: 'Language Parsing Model', weight: 90, type: 'risk', details: 'Command verbs (wire, immediately, bypass, urgent) grouped with high density.' },
+      { id: 'ev-4', source: 'SPF / DKIM Signatures', weight: 100, type: 'safety', details: 'Sender SPF headers passed verification, indicating a valid server origin.' }
+    ];
+  }
 
   const currentVector = vectors.find(v => v.id === selectedVector) || vectors[0];
 

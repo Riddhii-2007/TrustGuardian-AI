@@ -518,7 +518,6 @@ class AnalyzerService:
             risk_level = trust_result.risk_level
             trust_score = trust_result.trust_score
             confidence_score = trust_result.confidence_score
-            verification_required = False  # To be populated by future CircuitBreaker
             recommendation = trust_result.recommendation
         else:
             # Fallback to LLM-only scoring (legacy path)
@@ -526,23 +525,26 @@ class AnalyzerService:
             risk_level = _DEFAULT_RISK_LEVEL
             trust_score = 100.0 - risk_score
             confidence_score = 0.0
-            verification_required = False
             recommendation = str(llm.get("recommendation", "Pending analysis"))
 
         if evidence.circuit_breaker_triggered:
-            verification_required = True
             recommendation = f"MANDATORY VERIFICATION — {evidence.circuit_breaker_reason}. Confirm via secondary channel before proceeding."
             
-        # Determine quick decision based on trust score
-        if trust_score >= 90:
-            decision = "SAFE_TO_OPEN"
-        elif trust_score >= 70:
-            decision = "LIKELY_SAFE"
-        elif trust_score >= 50:
+        # Align verification_required and quick decision with the finalized recommendation
+        if "ALLOW" in recommendation:
+            verification_required = False
+            if trust_score >= 90:
+                decision = "SAFE_TO_OPEN"
+            else:
+                decision = "LIKELY_SAFE"
+        elif "VERIF" in recommendation:
+            verification_required = True
             decision = "VERIFY_FIRST"
-        elif trust_score >= 30:
-            decision = "HIGH_RISK"
+        elif "BLOCK" in recommendation:
+            verification_required = True
+            decision = "DO_NOT_OPEN"
         else:
+            verification_required = True
             decision = "DO_NOT_OPEN"
             
         summary = str(llm.get("summary", "Analysis completed."))

@@ -76,7 +76,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       }
 
       // Set up auth state listener
-      supabase.auth.onAuthStateChange((_event, session) => {
+      supabase.auth.onAuthStateChange((_event: any, session: any) => {
         if (session) {
           const userProfile: UserProfile = {
             id: session.user.id,

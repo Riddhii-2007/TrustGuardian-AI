@@ -93,7 +93,8 @@ async def get_dashboard_stats(
         if client is not None:
             try:
                 db_res = client.table("scan_audit_log").select("id", count="exact").limit(0).execute()
-                total_analyzed = db_res.count if hasattr(db_res, 'count') and db_res.count is not None else len(emails)
+                db_count = db_res.count if hasattr(db_res, 'count') and db_res.count is not None else 0
+                total_analyzed = max(db_count, len(emails))
             except Exception:
                 total_analyzed = len(emails)
         else:

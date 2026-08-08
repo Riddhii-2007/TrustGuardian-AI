@@ -18,6 +18,7 @@ const AnalyzerPage: React.FC = () => {
   const isDemo = !id || id === 'demo';
 
   const [demoInput, setDemoInput] = useState(
+    localStorage.getItem('recent_email_content') ||
     "Hi John, I need you to wire $50,000 to the attached vendor immediately. I'm in a meeting and can't take calls. Please process this urgently so we don't lose the contract. - CEO"
   );
 
@@ -28,7 +29,11 @@ const AnalyzerPage: React.FC = () => {
   });
 
   const analyzeMutation = useMutation({
-    mutationFn: (text: string) => requestsApi.analyzeRequest(text, "Urgent Wire Transfer", "ceo-imposter@trust-guardian.ai"),
+    mutationFn: (text: string) => {
+      const subject = localStorage.getItem('recent_email_subject') || "Urgent Wire Transfer";
+      const sender = localStorage.getItem('recent_email_sender') || "ceo-imposter@trust-guardian.ai";
+      return requestsApi.analyzeRequest(text, subject, sender);
+    },
   });
 
   const handleAnalyze = () => {

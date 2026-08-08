@@ -34,6 +34,7 @@ export interface ActivityItem {
   description: string;
   timestamp: string;
   risk_level: 'critical' | 'high' | 'medium' | 'low' | 'safe';
+  content?: string;
 }
 
 export const dashboardApi = {

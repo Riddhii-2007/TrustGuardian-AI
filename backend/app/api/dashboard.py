@@ -28,6 +28,7 @@ class ActivityItem(BaseModel):
     description: str
     timestamp: str
     risk_level: str
+    content: Optional[str] = None
 
 class ThreatCategory(BaseModel):
     name: str
@@ -183,7 +184,8 @@ async def get_recent_activity(
                     title=f"Analyzed: {subject}",
                     description=f"From: {sender} | Score: {trust_score:.1f}/100 | {snippet}",
                     timestamp="Just now",
-                    risk_level=r_level
+                    risk_level=r_level,
+                    content=email.get('body', '')
                 ))
     
     # Fallback to defaults if no real data or no token

@@ -44,6 +44,24 @@ const DashboardPage: React.FC = () => {
     queryFn: dashboardApi.getRecentActivity,
   });
 
+  React.useEffect(() => {
+    if (activity && activity.length > 0) {
+      const latestMail = activity.find(item => item.content);
+      if (latestMail && latestMail.content) {
+        localStorage.setItem('recent_email_content', latestMail.content);
+        
+        // Extract sender clean name from description (e.g. From: Kamanaboina Shasheesh <...> | Score: ...)
+        const descParts = latestMail.description.split('|');
+        const fromPart = descParts[0].replace('From:', '').trim();
+        localStorage.setItem('recent_email_sender', fromPart);
+        
+        // Extract subject from title (e.g. Analyzed: Want money)
+        const subPart = latestMail.title.replace('Analyzed:', '').trim();
+        localStorage.setItem('recent_email_subject', subPart);
+      }
+    }
+  }, [activity]);
+
   const isLoading = statsLoading || activityLoading;
   const isError = statsError || activityError;
 

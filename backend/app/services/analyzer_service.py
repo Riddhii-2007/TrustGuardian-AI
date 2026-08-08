@@ -61,6 +61,7 @@ from app.models.trust_engine import (
     LLMAnalysisResult,
     GraphAnalysisResult
 )
+from app.models.threat_intel import ThreatIntelResult
 from app.services.threat_intel_service import (
     ThreatIntelService,
     threat_intel_service as _default_threat_intel,

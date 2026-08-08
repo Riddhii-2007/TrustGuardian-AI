@@ -41,7 +41,7 @@ class TrustEngineService:
         reasoning: List[DecisionTrace] = []
         evidence_used: List[str] = []
 
-        if llm_analysis and llm_analysis.risk_score > 0:
+        if llm_analysis is not None:
             evidence_used.append("llm_analysis")
         if threat_intel and threat_intel.urls_checked is not None:
             evidence_used.append("threat_intel")
@@ -59,7 +59,7 @@ class TrustEngineService:
         historical_risk, hist_traces = self._compute_historical_risk(graph_intel)
         reasoning.extend(hist_traces)
         
-        content_risk, cont_traces = self._compute_content_risk(llm_analysis)
+        content_risk, cont_traces = self._compute_content_risk(llm_analysis, identity_risk, historical_risk)
         reasoning.extend(cont_traces)
 
         # --- Stage 3: Fusion ---
@@ -97,7 +97,7 @@ class TrustEngineService:
         # --- Stage 4: Decisions ---
         risk_level = config.determine_risk_level(trust_score)
         
-        recommendation = config.determine_recommendation(trust_score)
+        recommendation = config.determine_recommendation(trust_score, confidence_score)
         
         component_scores = {}
         if content_risk is not None:
@@ -127,7 +127,7 @@ class TrustEngineService:
         traces = []
         conf = 0.0
         
-        if llm and llm.risk_score > 0:
+        if llm is not None:
             conf += config.CONF_LLM_MAX
             traces.append(DecisionTrace(
                 rule_name="LLM_Confidence", evidence_source="llm", weight_applied=config.CONF_LLM_MAX,
@@ -229,16 +229,35 @@ class TrustEngineService:
         return risk, traces
 
     @staticmethod
-    def _compute_content_risk(llm: LLMAnalysisResult) -> Tuple[float | None, List[DecisionTrace]]:
+    def _compute_content_risk(
+        llm: LLMAnalysisResult,
+        identity_risk: float | None = None,
+        historical_risk: float | None = None,
+    ) -> Tuple[float | None, List[DecisionTrace]]:
         traces = []
         if not llm: return None, traces
 
-        risk = _clamp(llm.risk_score)
-        
-        traces.append(DecisionTrace(
-            rule_name="LLM_Content_Risk", evidence_source="llm.risk_score", weight_applied=risk,
-            explanation=f"LLM base risk score: {risk:.2f}"
-        ))
+        raw = _clamp(llm.risk_score)
+        other_signals_low = (
+            (identity_risk is not None and identity_risk <= config.LOW_RISK_THRESHOLD)
+            and (historical_risk is not None and historical_risk <= config.LOW_RISK_THRESHOLD)
+        )
+        if other_signals_low:
+            risk = raw * config.CONTENT_RISK_HALVING_FACTOR
+            traces.append(DecisionTrace(
+                rule_name="Content_Risk_Dampening",
+                evidence_source="llm.risk_score",
+                weight_applied=risk,
+                explanation="Content risk dampened — no corroborating identity or historical signal."
+            ))
+        else:
+            risk = raw
+            traces.append(DecisionTrace(
+                rule_name="LLM_Content_Risk",
+                evidence_source="llm.risk_score",
+                weight_applied=risk,
+                explanation=f"LLM base risk score: {risk:.2f}"
+            ))
             
         return risk, traces
 

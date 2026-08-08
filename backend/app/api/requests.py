@@ -19,8 +19,15 @@ class AnalyzeRequestPayload(BaseModel):
 
 @router.post("/analyze", response_model=APIResponse[BusinessRequest])
 async def analyze_request(payload: AnalyzeRequestPayload, token: TokenPayload = Depends(verify_token)):
-    # 1. Send the text to the AI analyzer
-    analysis = await analyzer_service.analyze_request(payload.text)
+    # 1. Send the text to the AI analyzer forwarding subject and requester_email metadata
+    scan_req = ScanRequest(
+        content=payload.text,
+        metadata={
+            "subject": payload.subject or "No Subject",
+            "requester_email": payload.requester_email or "unknown@example.com"
+        }
+    )
+    analysis = await analyzer_service.scan(scan_req)
     
     # 2. Package it into a BusinessRequest
     request = BusinessRequest(
@@ -63,7 +70,7 @@ async def list_requests(token: TokenPayload = Depends(verify_token)):
 async def get_request(id: str, token: TokenPayload = Depends(verify_token)):
     # Mock specific request fetch + run analysis on it
     mock_email = "John, I need you to wire $50,000 to the attached vendor immediately. I'm in a meeting and can't take calls."
-    analysis = await analyzer_service.analyze_request(mock_email)
+    analysis = await analyzer_service.scan(ScanRequest(content=mock_email))
     
     request = BusinessRequest(
         id=id,

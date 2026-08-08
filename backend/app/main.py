@@ -11,6 +11,10 @@ async def lifespan(app: FastAPI):
     # Startup
     init_supabase()
     init_neo4j()
+    if settings.APP_ENV == "development" and settings.DEV_AUTH_BYPASS_TOKEN:
+        import logging
+        logging.warning("\033[91m⚠️ [SECURITY WARNING] DEV BYPASS AUTHENTICATION ENABLED! ⚠️\033[0m")
+        logging.warning(f"\033[91mBypass token configured: {settings.DEV_AUTH_BYPASS_TOKEN}\033[0m")
     yield
     # Shutdown
     close_neo4j()

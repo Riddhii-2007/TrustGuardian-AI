@@ -241,6 +241,11 @@ class AnalyzerService:
         #    so extraction indicators are available as LLM context.
         await self._collect_extraction_evidence(request, evidence)
 
+        # Run circuit breaker check right after step 3 (extraction)
+        cb_triggered, cb_reason = self._check_circuit_breaker(request.content)
+        evidence.circuit_breaker_triggered = cb_triggered
+        evidence.circuit_breaker_reason = cb_reason
+
         # 4. Collect remaining evidence — parallel where independent.
         #    Each coroutine populates one slot of the evidence object.
         #    _run_safe() ensures a failing service never aborts the scan.
@@ -294,6 +299,17 @@ class AnalyzerService:
             len(evidence.warnings),
         )
 
+        # 7.5 Audit log to Supabase — propagates exceptions to prevent silent log drop
+        from app.db.supabase import write_scan_audit
+        write_scan_audit({
+            "subject": request.metadata.get("subject", "No Subject"),
+            "sender": request.metadata.get("requester_email", "unknown@example.com"),
+            "trust_score": scan_result.trust_score,
+            "confidence_score": scan_result.confidence_score,
+            "recommendation": scan_result.recommendation,
+            "verification_required": scan_result.verification_required,
+        })
+
         # 8. Map to the public model at the API boundary.
         res = self._to_analysis_result(scan_result)
         if hasattr(self, "_scan_cache"):
@@ -346,6 +362,28 @@ class AnalyzerService:
             return result.analysis if isinstance(result.analysis, dict) else {}
 
         llm_data = await self._run_safe("llm", _call(), default={}, evidence=evidence)
+        if llm_data and "psychology" in llm_data:
+            psy = llm_data["psychology"]
+            if "risk_score" not in llm_data:
+                urgency = psy.get("urgency", 0.0)
+                authority = psy.get("authority", 0.0)
+                fear = psy.get("fear", 0.0)
+                intent = psy.get("intent", 0.0)
+                # Familiarity is excluded from risk max because higher familiarity represents a positive trust indicator rather than an active threat vector.
+                base_risk = max(urgency, authority, fear, intent) * 100.0
+                llm_data["risk_score"] = round(base_risk, 2)
+            if "risk_level" not in llm_data:
+                score = llm_data["risk_score"]
+                if score <= 20:
+                    llm_data["risk_level"] = "Safe"
+                elif score <= 40:
+                    llm_data["risk_level"] = "Low"
+                elif score <= 60:
+                    llm_data["risk_level"] = "Medium"
+                elif score <= 80:
+                    llm_data["risk_level"] = "High"
+                else:
+                    llm_data["risk_level"] = "Critical"
         evidence.llm_analysis = llm_data
         if llm_data:
             evidence.services_used.append("llm")
@@ -491,7 +529,6 @@ class AnalyzerService:
             risk_level = trust_result.risk_level
             trust_score = trust_result.trust_score
             confidence_score = trust_result.confidence_score
-            verification_required = False  # To be populated by future CircuitBreaker
             recommendation = trust_result.recommendation
         else:
             # Fallback to LLM-only scoring (legacy path)
@@ -499,19 +536,26 @@ class AnalyzerService:
             risk_level = _DEFAULT_RISK_LEVEL
             trust_score = 100.0 - risk_score
             confidence_score = 0.0
-            verification_required = False
             recommendation = str(llm.get("recommendation", "Pending analysis"))
+
+        if evidence.circuit_breaker_triggered:
+            recommendation = f"MANDATORY VERIFICATION — {evidence.circuit_breaker_reason}. Confirm via secondary channel before proceeding."
             
-        # Determine quick decision based on trust score
-        if trust_score >= 90:
-            decision = "SAFE_TO_OPEN"
-        elif trust_score >= 70:
-            decision = "LIKELY_SAFE"
-        elif trust_score >= 50:
+        # Align verification_required and quick decision with the finalized recommendation
+        if "ALLOW" in recommendation:
+            verification_required = False
+            if trust_score >= 90:
+                decision = "SAFE_TO_OPEN"
+            else:
+                decision = "LIKELY_SAFE"
+        elif "VERIF" in recommendation:
+            verification_required = True
             decision = "VERIFY_FIRST"
-        elif trust_score >= 30:
-            decision = "HIGH_RISK"
+        elif "BLOCK" in recommendation:
+            verification_required = True
+            decision = "DO_NOT_OPEN"
         else:
+            verification_required = True
             decision = "DO_NOT_OPEN"
             
         summary = str(llm.get("summary", "Analysis completed."))
@@ -578,6 +622,25 @@ class AnalyzerService:
             quick_result=scan_result.quick_result,
             detailed_report=scan_result.detailed_report,
         )
+
+    def _check_circuit_breaker(self, content: str) -> tuple[bool, str]:
+        """Check if the email content matches any circuit breaker patterns.
+        
+        Returns (True, reason) if a pattern matches, else (False, "").
+        """
+        import re
+        patterns = [
+            (r"\b(bank\s+account|routing\s+number|account\s+number)\b.{0,40}\b(chang\w*|updat\w*|new|different)\b", "Request to change/update bank account or routing details"),
+            (r"\b(chang\w*|updat\w*|new|different)\b.{0,40}\b(bank\s+account|routing\s+number|account\s+number)\b", "Request to change/update bank account or routing details"),
+            (r"\b(chang|updat)\w*.{0,40}\b(payment\s+detail|beneficiary|wire\s+instruction)\b", "Request to change/update payment details, beneficiary, or wire instructions"),
+            (r"\b(payment\s+detail|beneficiary|wire\s+instruction)\b.{0,40}\b(chang|updat)\w*", "Request to change/update payment details, beneficiary, or wire instructions"),
+            (r"\bwire\s+(the\s+)?(funds?|payment)\s+to\b", "Instruction to wire payment/funds to a specified target"),
+            (r"\bnew\s+(bank\s+)?account\s+(for|to receive)\b", "Mention of new bank account to receive payments")
+        ]
+        for pattern, reason in patterns:
+            if re.search(pattern, content, re.IGNORECASE):
+                return True, reason
+        return False, ""
 
     # ------------------------------------------------------------------
     # Private Utilities

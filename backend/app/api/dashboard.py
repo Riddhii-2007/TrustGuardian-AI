@@ -8,6 +8,7 @@ from app.models.auth import TokenPayload
 from app.models.common import APIResponse
 from app.services.gmail_service import gmail_service
 from app.services.analyzer_service import analyzer_service
+from app.models.scan import ScanRequest
 
 router = APIRouter()
 
@@ -37,6 +38,7 @@ class DashboardStats(BaseModel):
     cards: List[StatCardData]
     threat_overview: List[ThreatCategory]
     risk_score_trend: List[Dict[str, Any]] # e.g. [{"date": "Mon", "score": 45}]
+    is_demo_data: bool
 
 # --- Routes ---
 @router.get("/stats", response_model=APIResponse[DashboardStats])
@@ -52,12 +54,13 @@ async def get_dashboard_stats(
     if emails:
         for e in emails:
             try:
-                res = await analyzer_service.analyze_request(e["content"])
+                res = await analyzer_service.scan(ScanRequest(content=e["content"]))
                 analyzed_results.append(res)
             except Exception as e:
                 analyzed_results.append(e)
     
-    total_analyzed = max(2845, len(emails))
+    is_demo_data = not bool(emails)
+
     high_risk_count = 0
     avg_trust = 0
     threat_counts = {}
@@ -72,12 +75,39 @@ async def get_dashboard_stats(
             for flag in getattr(res, 'flags', []):
                 threat_counts[flag] = threat_counts.get(flag, 0) + 1
 
-    if valid_results > 0:
-        avg_trust = int(avg_trust / valid_results)
-    else:
-        avg_trust = 82
+    if is_demo_data:
+        total_analyzed = 2845
+        avg_trust_val = "82/100"
         high_risk_count = 47
+        deviation_val = "18"
         threat_counts = {"CEO Fraud": 15, "Invoice Tampering": 22, "Vendor Impersonation": 34, "Credential Phishing": 18}
+        risk_score_trend = [
+            {"date": "Mon", "score": 25}, {"date": "Tue", "score": 38}, {"date": "Wed", "score": 15},
+            {"date": "Thu", "score": 45}, {"date": "Fri", "score": 22}, {"date": "Sat", "score": 10},
+            {"date": "Sun", "score": 5},
+        ]
+    else:
+        # Determine total analyzed from Supabase if possible, otherwise use emails count
+        from app.db.supabase import get_supabase
+        client = get_supabase()
+        if client is not None:
+            try:
+                db_res = client.table("scan_audit_log").select("id", count="exact").limit(0).execute()
+                total_analyzed = db_res.count if hasattr(db_res, 'count') and db_res.count is not None else len(emails)
+            except Exception:
+                total_analyzed = len(emails)
+        else:
+            total_analyzed = len(emails)
+
+        if valid_results > 0:
+            avg_trust_val = f"{int(avg_trust / valid_results)}/100"
+        else:
+            avg_trust_val = "N/A"
+        
+        from app.services.replay_service import replay_service
+        deviation_count = sum(len(timeline.deviations) for timeline in replay_service._timelines.values())
+        deviation_val = str(deviation_count)
+        risk_score_trend = []
 
     threats = []
     colors = ["#ef4444", "#f97316", "#eab308", "#06b6d4"]
@@ -89,17 +119,14 @@ async def get_dashboard_stats(
 
     stats = DashboardStats(
         cards=[
-            StatCardData(id="req-analyzed", label="Requests Analyzed", value=f"{total_analyzed:,}", change="+12.5%", trend="up", color="text-brand-400"),
+            StatCardData(id="req-analyzed", label="Requests Analyzed", value=f"{total_analyzed:,}" if isinstance(total_analyzed, int) else str(total_analyzed), change="+12.5%", trend="up", color="text-brand-400"),
             StatCardData(id="high-risk", label="High Risk Detected", value=str(high_risk_count), change="+1.2%", trend="up", color="text-risk-critical"),
-            StatCardData(id="deviations", label="Workflow Deviations", value="18", change="+2.1%", trend="up", color="text-risk-medium"),
-            StatCardData(id="avg-trust", label="Avg Trust Score", value=f"{avg_trust}/100", change="+1.5%", trend="up", color="text-risk-safe")
+            StatCardData(id="deviations", label="Workflow Deviations", value=deviation_val, change="+2.1%", trend="up", color="text-risk-medium"),
+            StatCardData(id="avg-trust", label="Avg Trust Score", value=avg_trust_val, change="+1.5%", trend="up", color="text-risk-safe")
         ],
         threat_overview=threats,
-        risk_score_trend=[
-            {"date": "Mon", "score": 25}, {"date": "Tue", "score": 38}, {"date": "Wed", "score": 15},
-            {"date": "Thu", "score": 45}, {"date": "Fri", "score": 22}, {"date": "Sat", "score": 10},
-            {"date": "Sun", "score": 5},
-        ]
+        risk_score_trend=risk_score_trend,
+        is_demo_data=is_demo_data
     )
     return APIResponse(success=True, data=stats)
 
@@ -118,7 +145,7 @@ async def get_recent_activity(
             # Analyze sequentially to prevent hitting Groq rate limits
             for e in emails:
                 try:
-                    res = await analyzer_service.analyze_request(e["content"])
+                    res = await analyzer_service.scan(ScanRequest(content=e["content"]))
                     analyzed_results.append(res)
                 except Exception as e:
                     analyzed_results.append(e)

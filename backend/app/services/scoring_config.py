@@ -62,11 +62,18 @@ def determine_risk_level(trust_score: float) -> str:
     else:
         return "SAFE"
 
-def determine_recommendation(trust_score: float) -> str:
-    """Map Trust Score to Recommendation."""
-    if trust_score < 40:
-        return "BLOCK"
-    elif trust_score < 70:
-        return "VERIFY"
-    else:
+HIGH_TRUST_THRESHOLD = 70.0
+HIGH_CONFIDENCE_THRESHOLD = 70.0
+
+def determine_recommendation(trust_score: float, confidence_score: float) -> str:
+    """Map Trust and Confidence Score to a 2D Decision Matrix."""
+    high_trust = trust_score >= HIGH_TRUST_THRESHOLD
+    high_confidence = confidence_score >= HIGH_CONFIDENCE_THRESHOLD
+    if high_trust and high_confidence:
         return "ALLOW"
+    if high_trust and not high_confidence:
+        return "VERIFY_UNVERIFIED_SENDER"   # clean signals, but new/unknown — not "risky"
+    if not high_trust and high_confidence:
+        return "BLOCK"
+    return "BLOCK_ESCALATE_SOC"             # low trust AND low confidence
+

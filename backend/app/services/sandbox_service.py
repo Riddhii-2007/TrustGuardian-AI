@@ -40,7 +40,7 @@ class SandboxService:
                 )
             ]
             plain_rec = f"MANDATORY BLOCK: Request blocked per trust engine recommendation."
-        elif "VERIFY" in rec:
+        elif "VERIF" in rec:
             primary_desc = "Verification completed, request proceeds safely"
             primary_prob = 0.7
             primary_impact = 10.0

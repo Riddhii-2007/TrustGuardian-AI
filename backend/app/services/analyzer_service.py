@@ -351,6 +351,27 @@ class AnalyzerService:
             return result.analysis if isinstance(result.analysis, dict) else {}
 
         llm_data = await self._run_safe("llm", _call(), default={}, evidence=evidence)
+        if llm_data and "psychology" in llm_data:
+            psy = llm_data["psychology"]
+            if "risk_score" not in llm_data:
+                urgency = psy.get("urgency", 0.0)
+                authority = psy.get("authority", 0.0)
+                fear = psy.get("fear", 0.0)
+                intent = psy.get("intent", 0.0)
+                base_risk = max(urgency, authority, fear, intent) * 100.0
+                llm_data["risk_score"] = round(base_risk, 2)
+            if "risk_level" not in llm_data:
+                score = llm_data["risk_score"]
+                if score <= 20:
+                    llm_data["risk_level"] = "Safe"
+                elif score <= 40:
+                    llm_data["risk_level"] = "Low"
+                elif score <= 60:
+                    llm_data["risk_level"] = "Medium"
+                elif score <= 80:
+                    llm_data["risk_level"] = "High"
+                else:
+                    llm_data["risk_level"] = "Critical"
         evidence.llm_analysis = llm_data
         if llm_data:
             evidence.services_used.append("llm")

@@ -70,7 +70,7 @@ async def list_requests(token: TokenPayload = Depends(verify_token)):
 async def get_request(id: str, token: TokenPayload = Depends(verify_token)):
     # Mock specific request fetch + run analysis on it
     mock_email = "John, I need you to wire $50,000 to the attached vendor immediately. I'm in a meeting and can't take calls."
-    analysis = await analyzer_service.analyze_request(mock_email)
+    analysis = await analyzer_service.scan(ScanRequest(content=mock_email))
     
     request = BusinessRequest(
         id=id,

@@ -8,6 +8,7 @@ from app.models.auth import TokenPayload
 from app.models.common import APIResponse
 from app.services.gmail_service import gmail_service
 from app.services.analyzer_service import analyzer_service
+from app.models.scan import ScanRequest
 
 router = APIRouter()
 
@@ -53,7 +54,7 @@ async def get_dashboard_stats(
     if emails:
         for e in emails:
             try:
-                res = await analyzer_service.analyze_request(e["content"])
+                res = await analyzer_service.scan(ScanRequest(content=e["content"]))
                 analyzed_results.append(res)
             except Exception as e:
                 analyzed_results.append(e)
@@ -144,7 +145,7 @@ async def get_recent_activity(
             # Analyze sequentially to prevent hitting Groq rate limits
             for e in emails:
                 try:
-                    res = await analyzer_service.analyze_request(e["content"])
+                    res = await analyzer_service.scan(ScanRequest(content=e["content"]))
                     analyzed_results.append(res)
                 except Exception as e:
                     analyzed_results.append(e)

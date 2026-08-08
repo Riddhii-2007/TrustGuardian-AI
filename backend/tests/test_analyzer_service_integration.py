@@ -74,3 +74,66 @@ async def test_analyzer_service_integration_e2e():
         if expected_cb:
             assert result.verification_required is True
             assert "MANDATORY VERIFICATION" in result.recommendation
+
+
+@pytest.mark.asyncio
+async def test_analyzer_service_psychology_risk_scoring():
+    # Dedicated test verifying the max() psychology scoring logic and familiarity exclusion
+    mock_llm = MagicMock()
+    
+    # 1. Test Case 1: High urgency and intent
+    psy_case1 = {
+        "psychology": {
+            "urgency": 0.9,
+            "authority": 0.4,
+            "fear": 0.1,
+            "familiarity": 0.1,
+            "intent": 0.6
+        },
+        "flags": ["Urgent request"],
+        "explanation": "Test case 1 explanation"
+    }
+    
+    # 2. Test Case 2: Pure familiarity (safe report)
+    psy_case2 = {
+        "psychology": {
+            "urgency": 0.0,
+            "authority": 0.0,
+            "fear": 0.0,
+            "familiarity": 0.9,
+            "intent": 0.0
+        },
+        "flags": [],
+        "explanation": "Test case 2 explanation"
+    }
+    
+    # 3. Test Case 3: Moderate risk
+    psy_case3 = {
+        "psychology": {
+            "urgency": 0.2,
+            "authority": 0.3,
+            "fear": 0.4,
+            "familiarity": 0.2,
+            "intent": 0.3
+        },
+        "flags": [],
+        "explanation": "Test case 3 explanation"
+    }
+    
+    cases = [
+        (psy_case1, 90.0, "CRITICAL"),
+        (psy_case2, 0.0, "SAFE"),
+        (psy_case3, 40.0, "MEDIUM")
+    ]
+    
+    for psy_data, expected_score, expected_level in cases:
+        mock_llm.analyze = AsyncMock(return_value=MagicMock(analysis=psy_data))
+        analyzer = AnalyzerService(llm_service=mock_llm)
+        
+        request = ScanRequest(content="dummy content")
+        result = await analyzer.scan(request)
+        
+        # Check that risk_score was enriched correctly based on max(urgency, authority, fear, intent) * 100
+        assert result.risk_score == expected_score
+        assert result.risk_level == expected_level
+

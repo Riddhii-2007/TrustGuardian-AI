@@ -358,6 +358,7 @@ class AnalyzerService:
                 authority = psy.get("authority", 0.0)
                 fear = psy.get("fear", 0.0)
                 intent = psy.get("intent", 0.0)
+                # Familiarity is excluded from risk max because higher familiarity represents a positive trust indicator rather than an active threat vector.
                 base_risk = max(urgency, authority, fear, intent) * 100.0
                 llm_data["risk_score"] = round(base_risk, 2)
             if "risk_level" not in llm_data:

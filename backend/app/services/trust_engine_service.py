@@ -41,7 +41,7 @@ class TrustEngineService:
         reasoning: List[DecisionTrace] = []
         evidence_used: List[str] = []
 
-        if llm_analysis and llm_analysis.risk_score > 0:
+        if llm_analysis is not None:
             evidence_used.append("llm_analysis")
         if threat_intel and threat_intel.urls_checked is not None:
             evidence_used.append("threat_intel")
@@ -127,7 +127,7 @@ class TrustEngineService:
         traces = []
         conf = 0.0
         
-        if llm and llm.risk_score > 0:
+        if llm is not None:
             conf += config.CONF_LLM_MAX
             traces.append(DecisionTrace(
                 rule_name="LLM_Confidence", evidence_source="llm", weight_applied=config.CONF_LLM_MAX,

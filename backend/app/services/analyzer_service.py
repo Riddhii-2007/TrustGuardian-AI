@@ -487,7 +487,7 @@ class AnalyzerService:
 
         # --- Trust Engine scores (authoritative when available) ---
         if trust_result is not None:
-            risk_score = trust_result.risk_score
+            risk_score = 100.0 - trust_result.trust_score
             risk_level = trust_result.risk_level
             trust_score = trust_result.trust_score
             confidence_score = trust_result.confidence_score

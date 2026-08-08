@@ -49,5 +49,14 @@ def write_scan_audit(record: dict) -> None:
     if client is None:
         raise RuntimeError("Supabase client is not initialized.")
     
-    # Executes the insert call synchronously and raises APIError on failure
-    client.table("scan_audit_log").insert(record).execute()
+    # Executes the insert call synchronously and catches APIErrors in development
+    try:
+        client.table("scan_audit_log").insert(record).execute()
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Supabase Audit Write Failed: {e}")
+        if settings.APP_ENV == "development":
+            logger.info("APP_ENV is development — continuing scan execution without database persistence.")
+            return
+        raise e

@@ -6,15 +6,25 @@ import { ShieldCheck, Cpu, Database, Network } from 'lucide-react';
 // Spinning concentric rings, scanning laser lines, and status feed
 // ==========================================
 
-export const AICore: React.FC = () => {
-  const [activeNodes, setActiveNodes] = useState<number>(142);
-  const [decryptionRate, setDecryptionRate] = useState<string>("99.4%");
+import type { AICoreMetadata } from '../../api/dashboard.api';
+
+interface AICoreProps {
+  metadata?: AICoreMetadata;
+}
+
+export const AICore: React.FC<AICoreProps> = ({ metadata }) => {
+  const baseNodes = metadata?.knowledge_base_nodes ?? 142;
+  const [activeNodes, setActiveNodes] = useState<number>(baseNodes);
+  const [decryptionRate] = useState<string>("99.4%");
+
+  useEffect(() => {
+    setActiveNodes(baseNodes);
+  }, [baseNodes]);
 
   useEffect(() => {
     // Generate minor fluctuations for dynamic numbers
     const interval = setInterval(() => {
       setActiveNodes(prev => prev + (Math.random() > 0.5 ? 1 : -1));
-      setDecryptionRate((99.2 + Math.random() * 0.5).toFixed(1) + "%");
     }, 3000);
     return () => clearInterval(interval);
   }, []);
@@ -75,7 +85,7 @@ export const AICore: React.FC = () => {
             <ShieldCheck className="text-cyan-400" size={18} />
             <div>
               <div className="text-[10px] font-bold text-slate-500 uppercase">Secure Gateway</div>
-              <div className="text-sm font-semibold text-slate-200">PII Mask: 10 Rules</div>
+              <div className="text-sm font-semibold text-slate-200">PII Mask: {metadata?.secure_gateway_rules ?? 11} Rules</div>
             </div>
           </div>
 
@@ -83,7 +93,7 @@ export const AICore: React.FC = () => {
             <Cpu className="text-green-400" size={18} />
             <div>
               <div className="text-[10px] font-bold text-slate-500 uppercase">Primary Router</div>
-              <div className="text-sm font-semibold text-slate-200">Gemini-2.5-Flash</div>
+              <div className="text-sm font-semibold text-slate-200">{metadata?.primary_router ?? "Gemini-2.5-Flash"}</div>
             </div>
           </div>
 
@@ -91,7 +101,7 @@ export const AICore: React.FC = () => {
             <Network className="text-orange-400" size={18} />
             <div>
               <div className="text-[10px] font-bold text-slate-500 uppercase">Accuracy Rate</div>
-              <div className="text-sm font-semibold text-slate-200">{decryptionRate} F-Score</div>
+              <div className="text-sm font-semibold text-slate-200">{metadata?.accuracy_rate ?? (decryptionRate + " F-Score")}</div>
             </div>
           </div>
         </div>
@@ -100,10 +110,18 @@ export const AICore: React.FC = () => {
         <div className="bg-slate-950/50 rounded-lg p-3 border border-slate-800/40 text-xs font-mono text-slate-400 flex flex-col space-y-1">
           <div className="flex justify-between">
             <span className="text-slate-500">[SYS_LOG]</span>
-            <span className="text-cyan-400">READY</span>
+            <span className="text-cyan-400">{metadata?.sys_log_status ?? "READY"}</span>
           </div>
-          <div className="truncate">Active Ingestion: Gmail API endpoint initialized.</div>
-          <div className="truncate">Privacy Guard: Aadhaar, PAN & Routing rules loaded.</div>
+          {metadata?.sys_log_messages ? (
+            metadata.sys_log_messages.map((msg, i) => (
+              <div key={i} className="truncate">{msg}</div>
+            ))
+          ) : (
+            <>
+              <div className="truncate">Active Ingestion: Gmail API endpoint initialized.</div>
+              <div className="truncate">Privacy Guard: Aadhaar, PAN & Routing rules loaded.</div>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -138,7 +138,7 @@ const DashboardPage: React.FC = () => {
       {/* Futuristic Centerpiece Operations Console */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <AICore />
+          <AICore metadata={stats.ai_core} />
         </div>
         <div className="lg:col-span-1">
           <TrustScoreGauge 

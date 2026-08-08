@@ -20,11 +20,21 @@ export interface ThreatCategory {
   color: string;
 }
 
+export interface AICoreMetadata {
+  knowledge_base_nodes: number;
+  secure_gateway_rules: number;
+  primary_router: string;
+  accuracy_rate: string;
+  sys_log_status: string;
+  sys_log_messages: string[];
+}
+
 export interface DashboardStats {
   cards: StatCardData[];
   threat_overview: ThreatCategory[];
   risk_score_trend: { date: string; score: number }[];
   is_demo_data: boolean;
+  ai_core: AICoreMetadata;
 }
 
 export interface ActivityItem {

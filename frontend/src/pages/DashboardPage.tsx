@@ -67,13 +67,23 @@ const DashboardPage: React.FC = () => {
     );
   }
 
-  // Dynamically extract trust score from cards if possible, otherwise default to 82
+  // Dynamically extract trust score from cards if possible
   const trustCard = stats.cards.find(c => c.label.toLowerCase().includes('trust'));
-  const trustScore = trustCard ? parseInt(trustCard.value.split('/')[0]) || 82 : 82;
-  const riskLevel = trustScore > 80 ? 'Low' : trustScore > 50 ? 'Medium' : 'High';
+  const isNa = trustCard && trustCard.value === 'N/A';
+  const trustScore = trustCard && !isNa ? parseInt(trustCard.value.split('/')[0]) : null;
+  const riskLevel = trustScore !== null ? (trustScore > 80 ? 'Low' : trustScore > 50 ? 'Medium' : 'High') : 'N/A';
 
   return (
     <div className="space-y-8 animate-fade-in pb-8">
+      {stats.is_demo_data && (
+        <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-xl flex items-center gap-3 shadow-[0_0_20px_rgba(245,158,11,0.05)] backdrop-blur-md">
+          <span className="text-xl">⚠️</span>
+          <div>
+            <h4 className="font-bold text-slate-100 text-sm">Running on Demo Data</h4>
+            <p className="text-xs text-slate-400 mt-0.5">Please link your Gmail account using the button on the right to fetch live analysis and dashboard statistics.</p>
+          </div>
+        </div>
+      )}
       <header className="flex justify-between items-end">
         <div>
           <h2 className="text-3xl font-extrabold text-slate-100 tracking-tight">Enterprise Trust Overview</h2>
@@ -115,7 +125,7 @@ const DashboardPage: React.FC = () => {
         <div className="lg:col-span-1">
           <TrustScoreGauge 
             score={trustScore} 
-            confidence={94} 
+            confidence={trustScore !== null ? 94 : null} 
             riskLevel={riskLevel} 
           />
         </div>

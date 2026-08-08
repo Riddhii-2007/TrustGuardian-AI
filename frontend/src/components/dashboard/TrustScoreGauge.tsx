@@ -6,9 +6,9 @@ import React from 'react';
 // ==========================================
 
 interface Props {
-  score: number;        // Overall trust score (0 - 100)
-  confidence: number;   // Confidence percentage (0 - 100)
-  riskLevel: string;    // "Critical" | "High" | "Medium" | "Low"
+  score: number | null;        // Overall trust score (0 - 100) or null for N/A
+  confidence: number | null;   // Confidence percentage (0 - 100) or null for N/A
+  riskLevel: string;    // "Critical" | "High" | "Medium" | "Low" | "N/A"
 }
 
 export const TrustScoreGauge: React.FC<Props> = ({ score, confidence, riskLevel }) => {
@@ -16,10 +16,18 @@ export const TrustScoreGauge: React.FC<Props> = ({ score, confidence, riskLevel 
   const radius = 70;
   const strokeWidth = 10;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (score / 100) * circumference;
+  const strokeDashoffset = score !== null ? circumference - (score / 100) * circumference : circumference;
 
   // Determine colors based on risk/trust levels
   const getColors = () => {
+    if (score === null || riskLevel === 'N/A') {
+      return {
+        text: 'text-slate-500',
+        stroke: 'stroke-slate-800/60',
+        glow: 'transparent',
+        bg: 'bg-slate-800/10 border-slate-800/20'
+      };
+    }
     const lvl = riskLevel.toLowerCase();
     if (lvl === 'critical' || score < 40) {
       return {
@@ -82,8 +90,10 @@ export const TrustScoreGauge: React.FC<Props> = ({ score, confidence, riskLevel 
         {/* Center content metrics */}
         <div className="absolute flex flex-col items-center justify-center text-center">
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">TRUST INDEX</span>
-          <span className={`text-4xl font-extrabold tracking-tight ${currentColors.text} mt-1`}>{score}</span>
-          <span className="text-xs text-slate-400 font-semibold mt-1">/ 100</span>
+          <span className={`text-4xl font-extrabold tracking-tight ${currentColors.text} mt-1`}>
+            {score !== null ? score : 'N/A'}
+          </span>
+          {score !== null && <span className="text-xs text-slate-400 font-semibold mt-1">/ 100</span>}
         </div>
       </div>
 
@@ -91,7 +101,9 @@ export const TrustScoreGauge: React.FC<Props> = ({ score, confidence, riskLevel 
       <div className="w-full flex items-center justify-between mt-6 border-t border-slate-800/60 pt-4 px-2">
         <div className="text-center">
           <div className="text-[10px] font-bold text-slate-500 uppercase">Confidence</div>
-          <div className="text-sm font-bold text-slate-200 mt-1">{confidence}%</div>
+          <div className="text-sm font-bold text-slate-200 mt-1">
+            {confidence !== null ? `${confidence}%` : 'N/A'}
+          </div>
         </div>
 
         <div className="w-px h-8 bg-slate-800"></div>

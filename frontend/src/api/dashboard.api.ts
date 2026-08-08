@@ -24,6 +24,7 @@ export interface DashboardStats {
   cards: StatCardData[];
   threat_overview: ThreatCategory[];
   risk_score_trend: { date: string; score: number }[];
+  is_demo_data: boolean;
 }
 
 export interface ActivityItem {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Play, RotateCcw, Sliders, Shield, ShieldCheck, ShieldAlert, Cpu, Layers, FileText, AlertTriangle } from 'lucide-react';
-import { requestsApi, SimulationResult } from '../api/requests.api';
+import { requestsApi } from '../api/requests.api';
+import type { SimulationResult } from '../api/requests.api';
 
 interface PipelineStep {
   name: string;

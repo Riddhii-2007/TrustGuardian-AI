@@ -241,6 +241,11 @@ class AnalyzerService:
         #    so extraction indicators are available as LLM context.
         await self._collect_extraction_evidence(request, evidence)
 
+        # Run circuit breaker check right after step 3 (extraction)
+        cb_triggered, cb_reason = self._check_circuit_breaker(request.content)
+        evidence.circuit_breaker_triggered = cb_triggered
+        evidence.circuit_breaker_reason = cb_reason
+
         # 4. Collect remaining evidence — parallel where independent.
         #    Each coroutine populates one slot of the evidence object.
         #    _run_safe() ensures a failing service never aborts the scan.
@@ -487,7 +492,7 @@ class AnalyzerService:
 
         # --- Trust Engine scores (authoritative when available) ---
         if trust_result is not None:
-            risk_score = trust_result.risk_score
+            risk_score = 100.0 - trust_result.trust_score
             risk_level = trust_result.risk_level
             trust_score = trust_result.trust_score
             confidence_score = trust_result.confidence_score
@@ -501,6 +506,10 @@ class AnalyzerService:
             confidence_score = 0.0
             verification_required = False
             recommendation = str(llm.get("recommendation", "Pending analysis"))
+
+        if evidence.circuit_breaker_triggered:
+            verification_required = True
+            recommendation = f"MANDATORY VERIFICATION — {evidence.circuit_breaker_reason}. Confirm via secondary channel before proceeding."
             
         # Determine quick decision based on trust score
         if trust_score >= 90:
@@ -578,6 +587,25 @@ class AnalyzerService:
             quick_result=scan_result.quick_result,
             detailed_report=scan_result.detailed_report,
         )
+
+    def _check_circuit_breaker(self, content: str) -> tuple[bool, str]:
+        """Check if the email content matches any circuit breaker patterns.
+        
+        Returns (True, reason) if a pattern matches, else (False, "").
+        """
+        import re
+        patterns = [
+            (r"\b(bank\s+account|routing\s+number|account\s+number)\b.{0,40}\b(chang\w*|updat\w*|new|different)\b", "Request to change/update bank account or routing details"),
+            (r"\b(chang\w*|updat\w*|new|different)\b.{0,40}\b(bank\s+account|routing\s+number|account\s+number)\b", "Request to change/update bank account or routing details"),
+            (r"\b(chang|updat)\w*.{0,40}\b(payment\s+detail|beneficiary|wire\s+instruction)\b", "Request to change/update payment details, beneficiary, or wire instructions"),
+            (r"\b(payment\s+detail|beneficiary|wire\s+instruction)\b.{0,40}\b(chang|updat)\w*", "Request to change/update payment details, beneficiary, or wire instructions"),
+            (r"\bwire\s+(the\s+)?(funds?|payment)\s+to\b", "Instruction to wire payment/funds to a specified target"),
+            (r"\bnew\s+(bank\s+)?account\s+(for|to receive)\b", "Mention of new bank account to receive payments")
+        ]
+        for pattern, reason in patterns:
+            if re.search(pattern, content, re.IGNORECASE):
+                return True, reason
+        return False, ""
 
     # ------------------------------------------------------------------
     # Private Utilities

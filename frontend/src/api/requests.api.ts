@@ -33,6 +33,10 @@ export interface AnalysisResult {
   psychology: PsychologyFactors;
   flags: string[];
   explanation: string;
+  trust_score: number;
+  confidence_score: number;
+  verification_required: boolean;
+  recommendation: string;
   quick_result?: QuickResult;
   detailed_report?: DetailedReport;
 }
@@ -45,6 +49,20 @@ export interface BusinessRequest {
   created_at: string;
   status: string;
   analysis?: AnalysisResult;
+}
+
+export interface OutcomeScenario {
+  scenario_id: string;
+  description: string;
+  probability: number;
+  impact_score: number;
+}
+
+export interface SimulationResult {
+  simulation_id: string;
+  request_id: string;
+  scenarios: OutcomeScenario[];
+  recommendation: string;
 }
 
 export const requestsApi = {
@@ -64,6 +82,19 @@ export const requestsApi = {
       subject,
       requester_email: requester
     });
+    return response.data.data;
+  },
+
+  simulateOutcome: async (payload: {
+    request_id: string;
+    action: string;
+    parameters: Record<string, any>;
+    trust_score?: number;
+    confidence_score?: number;
+    recommendation?: string;
+    flags?: string[];
+  }): Promise<SimulationResult> => {
+    const response = await apiClient.post<APIResponse<SimulationResult>>('/api/sandbox/simulate', payload);
     return response.data.data;
   }
 };

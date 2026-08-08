@@ -38,6 +38,12 @@ const AnalyzerPage: React.FC = () => {
   const currentData = isDemo ? analyzeMutation.data : requestData;
   const isLoading = isFetching || analyzeMutation.isPending;
 
+  React.useEffect(() => {
+    if (currentData) {
+      localStorage.setItem('recent_analysis', JSON.stringify(currentData));
+    }
+  }, [currentData]);
+
   const getRiskIcon = (level: string | undefined) => {
     switch (level?.toLowerCase()) {
       case 'critical': return <ShieldAlert className="text-red-500" size={32} />;

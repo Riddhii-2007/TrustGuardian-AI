@@ -11,6 +11,10 @@ class SimulationRequest(BaseModel):
     request_id: str
     action: str
     parameters: dict
+    trust_score: float | None = None
+    confidence_score: float | None = None
+    recommendation: str | None = None
+    flags: List[str] = []
 
 class SimulationResult(BaseModel):
     simulation_id: str

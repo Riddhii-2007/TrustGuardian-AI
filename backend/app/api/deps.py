@@ -21,6 +21,16 @@ async def verify_token(token: str = Depends(oauth2_scheme)) -> TokenPayload:
             headers={"WWW-Authenticate": "Bearer"},
         )
         
+    from app.config import settings
+    if settings.APP_ENV == "development" and settings.DEV_AUTH_BYPASS_TOKEN and token == settings.DEV_AUTH_BYPASS_TOKEN:
+        import logging
+        logging.warning("\033[91m⚠️ [SECURITY WARNING] DEV BYPASS AUTHENTICATION ACTIVE — Mock analyst access granted! ⚠️\033[0m")
+        return TokenPayload(
+            sub="mock-user-id",
+            exp=0,
+            email="analyst@trustguardian-ai.com"
+        )
+
     try:
         supabase = get_supabase()
         # Verify the token by calling Supabase get_user

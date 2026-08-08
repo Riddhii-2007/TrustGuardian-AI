@@ -4,10 +4,11 @@ from pydantic import ConfigDict
 class Settings(BaseSettings):
     model_config = ConfigDict(env_file=".env")
 
-    APP_ENV: str = "development"
+    APP_ENV: str = "production"
     SUPABASE_URL: str = "http://localhost:8000"
     SUPABASE_SERVICE_KEY: str = "default_key"
     GROQ_API_KEY: str = ""
+    DEV_AUTH_BYPASS_TOKEN: str = ""
 
     # --- LLM Provider Configuration ---
     LLM_PROVIDER: str = "gemini"                # "gemini" | "groq" | future: "openai", "ollama"

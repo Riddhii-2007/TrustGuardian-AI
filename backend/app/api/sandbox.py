@@ -9,7 +9,7 @@ router = APIRouter()
 
 @router.post("/simulate", response_model=APIResponse[SimulationResult])
 async def simulate_outcome(request: SimulationRequest, token: TokenPayload = Depends(verify_token)):
-    result = await sandbox_service.simulate_outcome(request.request_id, request.action, request.parameters)
+    result = await sandbox_service.simulate_outcome(request)
     return APIResponse(success=True, data=result)
 
 @router.get("/results/{id}", response_model=APIResponse[SimulationResult])

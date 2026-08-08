@@ -14,7 +14,7 @@ Model hierarchy:
 from __future__ import annotations
 
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -126,6 +126,14 @@ class ScanEvidence(BaseModel):
         default_factory=list,
         description="Non-fatal warnings collected during orchestration.",
     )
+    circuit_breaker_triggered: bool = Field(
+        default=False,
+        description="Whether a critical transaction circuit breaker was triggered."
+    )
+    circuit_breaker_reason: str = Field(
+        default="",
+        description="The reason/pattern that triggered the circuit breaker."
+    )
 
 
 class ScanResult(BaseModel):
@@ -150,4 +158,7 @@ class ScanResult(BaseModel):
     # v2 additions
     quick_result:          Optional[QuickResult]    = None
     detailed_report:       Optional[DetailedReport] = None
+
+
+ScanResult.model_rebuild()
 

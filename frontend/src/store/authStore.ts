@@ -32,6 +32,19 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   initialize: async () => {
     try {
+      const localToken = localStorage.getItem('supabase-auth-token');
+      if (import.meta.env.DEV && localToken === 'mock-token') {
+        const userProfile: UserProfile = {
+          id: "mock-user-id",
+          email: "analyst@trustguardian-ai.com",
+          full_name: "Mock Analyst",
+          role: "analyst",
+          created_at: new Date().toISOString()
+        };
+        set({ user: userProfile, accessToken: 'mock-token', isAuthenticated: true, isLoading: false });
+        return;
+      }
+
       const { data: { session }, error } = await supabase.auth.getSession();
       
       if (error) {

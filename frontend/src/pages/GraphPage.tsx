@@ -43,7 +43,7 @@ const GraphPage: React.FC = () => {
       data: {
         id: node.id,
         label: node.label,
-        name: node.properties.name || node.properties.address || node.id,
+        name: node.properties.name || node.properties.address || node.properties.type || node.id,
         type: node.label,
         properties: node.properties
       }

@@ -299,6 +299,17 @@ class AnalyzerService:
             len(evidence.warnings),
         )
 
+        # 7.5 Audit log to Supabase — propagates exceptions to prevent silent log drop
+        from app.db.supabase import write_scan_audit
+        write_scan_audit({
+            "subject": request.metadata.get("subject", "No Subject"),
+            "sender": request.metadata.get("requester_email", "unknown@example.com"),
+            "trust_score": scan_result.trust_score,
+            "confidence_score": scan_result.confidence_score,
+            "recommendation": scan_result.recommendation,
+            "verification_required": scan_result.verification_required,
+        })
+
         # 8. Map to the public model at the API boundary.
         res = self._to_analysis_result(scan_result)
         if hasattr(self, "_scan_cache"):
